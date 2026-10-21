@@ -1,0 +1,27 @@
+[package]
+name = "markdown-editor"
+version = "1.0.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+description = "A fast and lightweight desktop Markdown editor with live preview, built with Rust and Slint"
+readme = "README.md"
+keywords = ["markdown", "editor", "slint", "gui", "desktop"]
+categories = ["text-editors", "gui"]
+repository = "https://github.com/chungus-big/markdown-editor"
+homepage = "https://github.com/chungus-big/markdown-editor"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+slint = "1.18.1"
+pulldown-cmark = { version = "0.13.4", default-features = false }
+dark-light = "3.0.0"
+arboard = { version = "3.6.1", default-features = false }
+
+
+[build-dependencies]
+slint-build = "1.18.1"
+
+[profile.release]
+codegen-units = 1
+lto = true

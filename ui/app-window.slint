@@ -1,0 +1,3185 @@
+import { Button, ScrollView, CheckBox, Palette } from "std-widgets.slint";
+
+import "./fonts/SymbolsNerdFont-Regular.ttf";
+import "./fonts/HackNerdFont-Regular.ttf";
+import "./fonts/UbuntuNerdFont-Regular.ttf";
+import "./fonts/UbuntuMonoNerdFont-Regular.ttf";
+import "./fonts/UbuntuSansNerdFont-Regular.ttf";
+
+export global Theme {
+    in-out property <bool> is_dark: false;
+
+    // Window & Panels (KDE Breeze: Light #eff0f1, Dark #31363b)
+    out property <color> window_bg: is_dark ? #31363b : #eff0f1;
+    out property <color> panel_bg: is_dark ? #31363b : #eff0f1;
+    // Views (KDE Breeze: View Normal Light #ffffff, Dark #232629)
+    out property <color> view_bg: is_dark ? #232629 : #ffffff;
+    out property <color> sidebar_bg: is_dark ? #2a2e32 : #ffffff;
+
+    // Borders & Dividers (KDE Breeze: Dark #3d444b, Light #cbd5e1 / #e2e8f0)
+    out property <color> border: is_dark ? #3d444b : #cbd5e1;
+    out property <color> divider: is_dark ? #3d444b : #e2e8f0;
+
+    // Typography (KDE Breeze: Shade Black #232629 vs Paper White #fcfcfc)
+    out property <color> text_primary: is_dark ? #fcfcfc : #232629;
+    out property <color> text_secondary: is_dark ? #a1a9b1 : #64748b;
+    out property <color> text_muted: is_dark ? #7f8c8d : #94a3b8;
+
+    // Accent (KDE Plasma Blue #3daee9)
+    out property <color> accent: #3daee9;
+    out property <color> accent_hover: is_dark ? #2980b9 : #93cee9;
+    out property <color> accent_bg: is_dark ? #1e5774 : #d7effb;
+    out property <color> accent_text: is_dark ? #3daee9 : #0284c7;
+
+    // Tree / Selection
+    out property <color> item_hover: is_dark ? #3e4750 : #f1f5f9;
+    out property <color> item_active_bg: is_dark ? #1e5774 : #d7effb;
+    out property <color> item_active_text: is_dark ? #fcfcfc : #0284c7;
+    out property <color> item_active_border: is_dark ? #3daee9 : #7dd3fc;
+
+    // Buttons
+    out property <color> btn_bg: is_dark ? #2a2e32 : #e2e8f0;
+    out property <color> btn_hover: is_dark ? #3e4750 : #cbd5e1;
+    out property <color> btn_active_bg: is_dark ? #3daee9 : #ffffff;
+    out property <color> btn_active_text: is_dark ? #ffffff : #0284c7;
+    out property <color> btn_active_border: is_dark ? #3daee9 : #cbd5e1;
+    out property <color> btn_border: is_dark ? #444b52 : #cbd5e1;
+
+    // Badges
+    out property <color> badge_bg: is_dark ? #2a2e32 : #e2e8f0;
+    out property <color> badge_text: is_dark ? #a1a9b1 : #475569;
+
+    // Status colors (KDE Breeze: Warning #f67400, Error #da4453, Success #27ae60)
+    out property <color> warning_text: #f67400;
+    out property <color> warning_bg: is_dark ? #4a3410 : #fef3c7;
+    out property <color> warning_border: is_dark ? #875308 : #fcd34d;
+    out property <color> error: #da4453;
+    out property <color> success: #27ae60;
+
+    // Markdown elements
+    out property <color> heading: is_dark ? #fcfcfc : #0f172a;
+    out property <color> paragraph: is_dark ? #eff0f1 : #334155;
+    out property <color> blockquote_bg: is_dark ? #2a2e32 : #f8fafc;
+    out property <color> blockquote_border: #3daee9;
+    out property <color> code_block_bg: is_dark ? #1b1e20 : #1e293b;
+    out property <color> code_text: is_dark ? #fcfcfc : #f1f5f9;
+    out property <color> code_lang: #3daee9;
+    out property <color> table_header_bg: is_dark ? #2a2e32 : #f1f5f9;
+    out property <color> table_header_text: is_dark ? #fcfcfc : #0f172a;
+    out property <color> table_cell_bg: is_dark ? #232629 : #ffffff;
+    out property <color> table_alt_row_bg: is_dark ? #282c30 : #f8fafc;
+    out property <color> table_cell_text: is_dark ? #eff0f1 : #334155;
+    out property <color> table_border: is_dark ? #3d444b : #e2e8f0;
+    out property <color> footnote_bg: is_dark ? #2a2e32 : #f1f5f9;
+}
+
+export struct TableCellData {
+    text: styled-text,
+    width: length,
+    mid_width: length,
+    min_width: length,
+    flex_ratio: float,
+    ratio: float,
+    align: int,
+}
+
+export struct TableRowData {
+    cells: [TableCellData],
+    is_header: bool,
+}
+
+export struct ScrollTarget {
+    found: bool,
+    y: length,
+}
+
+export struct MarkdownBlockData {
+    block_type: string,
+    level: int,
+    content: string,
+    styled_content: styled-text,
+    extra: string,
+    footnote_label: string,
+    is_checked: bool,
+    rows: [TableRowData],
+    table_natural_width: length,
+    table_mid_width: length,
+    table_min_width: length,
+    has_links: bool,
+}
+
+export struct FileTreeItemData {
+    name: string,
+    path: string,
+    is_dir: bool,
+    is_expanded: bool,
+    depth: int,
+    is_active: bool,
+}
+
+component Splitter inherits Rectangle {
+    in-out property <bool> is_active: touch.has-hover || touch.pressed;
+    callback moved(length);
+
+    width: 6px;
+    background: transparent;
+
+    Rectangle {
+        width: 1px;
+        x: 2px;
+        height: 100%;
+        background: root.is_active ? Theme.accent : Theme.divider;
+        animate background { duration: 150ms; }
+    }
+
+    touch := TouchArea {
+        width: 100%;
+        height: 100%;
+        mouse-cursor: ew-resize;
+
+        moved => {
+            if self.pressed {
+                root.moved(self.mouse-x - self.pressed-x);
+            }
+        }
+    }
+}
+
+component MarkdownEditor inherits Rectangle {
+    in-out property <string> text <=> text_input.text;
+    in property <string> font_family: "";
+    in property <length> font_size: 14px;
+    in property <TextWrap> wrap: TextWrap.word-wrap;
+    in property <color> text_color: Theme.text_primary;
+    in property <color> selection_background_color: Theme.accent;
+    in property <color> selection_foreground_color: #ffffff;
+    in property <string> placeholder_text: @tr("Enter Markdown text...");
+    out property <bool> has_focus: text_input.has-focus;
+    out property <int> cursor_position: text_input.cursor-position-byte-offset;
+    out property <int> anchor_position: text_input.anchor-position-byte-offset;
+
+    callback formatting_requested(string);
+    callback edited(string);
+    callback cursor_moved();
+    callback tab_pressed();
+    callback backtab_pressed();
+    callback next_pane_requested();
+    callback undo_requested();
+    callback redo_requested();
+    callback shortcut_requested(string, bool, bool, bool, bool) -> bool;
+
+    public function raw_undo() { text_input.undo(); }
+    public function raw_redo() { text_input.redo(); }
+    public function undo() { root.undo_requested(); }
+    public function redo() { root.redo_requested(); }
+    public function cut() { text_input.cut(); }
+    public function copy() { text_input.copy(); }
+    public function paste() { text_input.paste(); }
+    public function select_all() { text_input.select-all(); }
+    public function clear_selection() { text_input.clear-selection(); }
+    public function focus_input() { text_input.focus(); }
+    public function set_selection(anchor: int, focus: int) {
+        text_input.set-selection-offsets(anchor, focus);
+    }
+
+    forward-focus: text_input;
+
+    ContextMenuArea {
+        Menu {
+            MenuItem {
+                title: @tr("Undo");
+                activated => { root.undo_requested(); }
+            }
+            MenuItem {
+                title: @tr("Redo");
+                activated => { root.redo_requested(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Cut");
+                activated => { text_input.cut(); }
+            }
+            MenuItem {
+                title: @tr("Copy");
+                activated => { text_input.copy(); }
+            }
+            MenuItem {
+                title: @tr("Paste");
+                activated => { text_input.paste(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Select All");
+                activated => { text_input.select-all(); }
+            }
+        }
+
+        scroll_view := ScrollView {
+            x: 10px;
+            y: 8px;
+            width: parent.width - 20px;
+            height: parent.height - 16px;
+            content-width: root.wrap == TextWrap.no-wrap ? max(self.visible-width, text_input.preferred-width) : self.visible-width;
+            content-height: max(self.visible-height, text_input.preferred-height);
+
+            text_input := TextInput {
+                width: root.wrap == TextWrap.no-wrap ? max(scroll_view.visible-width, self.preferred-width) : scroll_view.visible-width;
+                height: max(scroll_view.visible-height, self.preferred-height);
+                enabled: true;
+                single-line: false;
+                font-family: root.font_family;
+                font-size: root.font_size;
+                color: root.text_color;
+                selection-background-color: root.selection_background_color;
+                selection-foreground-color: root.selection_foreground_color;
+                wrap: root.wrap;
+                changed has-focus => {
+                    if self.has-focus {
+                        self.clear-selection();
+                    }
+                }
+
+                edited => {
+                    root.edited(self.text);
+                }
+
+                key-pressed(event) => {
+                    if !event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta {
+                        if event.text == Key.Tab || event.text == "\u{0009}" {
+                            if !event.modifiers.shift {
+                                root.tab_pressed();
+                                return accept;
+                            } else {
+                                root.backtab_pressed();
+                                return accept;
+                            }
+                        }
+                        if event.text == Key.Backtab {
+                            root.backtab_pressed();
+                            return accept;
+                        }
+                    }
+                    if event.modifiers.control && !event.modifiers.alt && !event.modifiers.meta {
+                        if event.text == Key.Tab || event.text == "\u{0009}" {
+                            if !event.modifiers.shift {
+                                root.next_pane_requested();
+                                return accept;
+                            } else {
+                                root.backtab_pressed();
+                                return accept;
+                            }
+                        }
+                    }
+                    if event.text == Key.Control || event.text == Key.Shift || event.text == Key.Alt || event.text == Key.AltGr || event.text == Key.Meta {
+                        return reject;
+                    }
+                    if event.modifiers.control || event.modifiers.alt || event.modifiers.meta || event.text == Key.Escape || event.text == Key.Return || event.text == Key.F1 || event.text == Key.F5 || event.text == Key.F6 {
+                        if root.shortcut_requested(event.text, event.modifiers.control, event.modifiers.alt, event.modifiers.shift, event.modifiers.meta) {
+                            return accept;
+                        }
+                    }
+                    reject
+                }
+
+                cursor-position-changed(cpos) => {
+                    root.cursor_moved();
+                    if (cpos.x + scroll_view.content-x < 0px) {
+                        scroll_view.content-x = min(0px, max(scroll_view.visible-width - self.width, -cpos.x));
+                    } else if (cpos.x + scroll_view.content-x > scroll_view.visible-width) {
+                        scroll_view.content-x = min(0px, max(scroll_view.visible-width - self.width, scroll_view.visible-width - cpos.x));
+                    }
+
+                    if (cpos.y + scroll_view.content-y < 0px) {
+                        scroll_view.content-y = min(
+                            0px,
+                            scroll_view.visible-height - cpos.y - 20px,
+                            max(scroll_view.visible-height - self.height, -cpos.y),
+                        );
+                    } else if (cpos.y + scroll_view.content-y > scroll_view.visible-height - 20px) {
+                        scroll_view.content-y = min(0px, max(scroll_view.visible-height - self.height, scroll_view.visible-height - cpos.y - 20px));
+                    }
+                }
+            }
+        }
+    }
+
+    if root.text == "" && !text_input.has-focus : Text {
+        x: 10px;
+        y: 8px;
+        text: root.placeholder_text;
+        font-family: root.font_family;
+        font-size: root.font_size;
+        color: Theme.text_muted;
+    }
+}
+
+export component AppWindow inherits Window {
+    title: (root.is_modified ? "● " : "") + (root.current_file_name != "" ? root.current_file_name + " — " : "") + "Markdown Editor";
+    preferred-width: 1160px;
+    preferred-height: 720px;
+    min-width: 720px;
+    min-height: 480px;
+    background: Theme.window_bg;
+
+    // Theme properties (0 = system, 1 = light, 2 = dark)
+    in-out property <int> theme_mode: 0;
+    in-out property <bool> theme_system_checked: theme_mode == 0;
+    in-out property <bool> theme_light_checked: theme_mode == 1;
+    in-out property <bool> theme_dark_checked: theme_mode == 2;
+    in-out property <bool> is_dark: false;
+
+    // Language properties (0 = auto, 1 = en, 2 = ru)
+    in-out property <int> language_mode: 0;
+    in-out property <bool> lang_system_checked: language_mode == 0;
+    in-out property <bool> lang_en_checked: language_mode == 1;
+    in-out property <bool> lang_ru_checked: language_mode == 2;
+
+    // Editor font properties (0 = monospace/system, 1 = Hack, 2 = Ubuntu, 3 = Ubuntu Mono, 4 = Ubuntu Sans)
+    in-out property <int> editor_font_mode: 1;
+    in-out property <bool> font_system_checked: editor_font_mode == 0;
+    in-out property <bool> font_hack_checked: editor_font_mode == 1;
+    in-out property <bool> font_ubuntu_checked: editor_font_mode == 2;
+    in-out property <bool> font_ubuntu_mono_checked: editor_font_mode == 3;
+    in-out property <bool> font_ubuntu_sans_checked: editor_font_mode == 4;
+    out property <string> editor_font_family:
+        editor_font_mode == 1 ? "Hack Nerd Font" :
+        (editor_font_mode == 2 ? "Ubuntu Nerd Font" :
+        (editor_font_mode == 3 ? "UbuntuMono Nerd Font" :
+        (editor_font_mode == 4 ? "UbuntuSans Nerd Font" : "monospace")));
+
+    // View mode properties (0 = split, 1 = edit only, 2 = preview only)
+    in-out property <int> view_mode: 0;
+    in-out property <bool> view_split_checked: view_mode == 0;
+    in-out property <bool> view_editor_checked: view_mode == 1;
+    in-out property <bool> view_preview_checked: view_mode == 2;
+
+    forward-focus: editor;
+
+    init => {
+        Palette.color-scheme = root.is_dark ? ColorScheme.dark : ColorScheme.light;
+        Theme.is_dark = root.is_dark;
+        editor.focus_input();
+        editor.clear_selection();
+    }
+
+    changed is_dark => {
+        Palette.color-scheme = root.is_dark ? ColorScheme.dark : ColorScheme.light;
+        Theme.is_dark = root.is_dark;
+    }
+
+    // Public functions
+    public function raw_undo() { editor.raw_undo(); }
+    public function raw_redo() { editor.raw_redo(); }
+    public function undo() { root.undo_requested(); }
+    public function redo() { root.redo_requested(); }
+    public function cut() { editor.cut(); }
+    public function copy() {
+        if root.active_code_block_index >= 0 && root.active_code_block_has_selection {
+            root.copy_active_code_block_selection();
+        } else if root.active_preview_block_index >= 0 {
+            root.copy_active_preview_block();
+        } else if root.active_code_block_index >= 0 {
+            root.copy_active_code_block_selection();
+        } else {
+            editor.copy();
+        }
+    }
+    public function copy_active_code_block_selection() {
+        if root.active_code_block_index >= 0 && root.active_code_block_index < root.preview_blocks.length {
+            root.copy_code_block_selection(
+                root.preview_blocks[root.active_code_block_index].content,
+                root.active_code_block_anchor,
+                root.active_code_block_cursor,
+                root.active_code_block_index
+            );
+        }
+    }
+    public function copy_active_preview_block() {
+        if root.active_preview_block_index >= 0 && root.active_preview_block_index < root.preview_blocks.length {
+            root.copy_preview_block(
+                root.preview_blocks[root.active_preview_block_index].content,
+                root.active_preview_block_index
+            );
+        }
+    }
+    public function paste() { editor.paste(); }
+    public function select_all() { editor.select_all(); }
+    public function focus_editor() {
+        if root.view_mode != 2 {
+            editor.focus_input();
+            editor.clear_selection();
+        }
+    }
+    public function focus_preview() {
+        if root.view_mode != 1 {
+            preview_focus.focus();
+        }
+    }
+    public function focus_file_tree() {
+        if root.show_files_sidebar {
+            file_tree_scope.focus();
+        }
+    }
+    public function focus_next_pane() {
+        if root.file_tree_has_focus {
+            if root.view_mode != 2 {
+                root.focus_editor();
+            } else {
+                root.focus_preview();
+            }
+        } else if root.editor_has_focus {
+            if root.view_mode != 1 {
+                root.focus_preview();
+            } else if root.show_files_sidebar {
+                root.focus_file_tree();
+            }
+        } else {
+            if root.show_files_sidebar {
+                root.focus_file_tree();
+            } else if root.view_mode != 2 {
+                root.focus_editor();
+            }
+        }
+    }
+    public function focus_prev_pane() {
+        if root.preview_has_focus {
+            if root.view_mode != 2 {
+                root.focus_editor();
+            } else if root.show_files_sidebar {
+                root.focus_file_tree();
+            }
+        } else if root.editor_has_focus {
+            if root.show_files_sidebar {
+                root.focus_file_tree();
+            } else if root.view_mode != 1 {
+                root.focus_preview();
+            }
+        } else {
+            if root.view_mode != 1 {
+                root.focus_preview();
+            } else if root.view_mode != 2 {
+                root.focus_editor();
+            }
+        }
+    }
+    public function handle_f6(shift: bool) {
+        if shift {
+            root.focus_prev_pane();
+        } else {
+            root.focus_next_pane();
+        }
+    }
+    public function set_editor_selection(anchor: int, focus: int) {
+        editor.set_selection(anchor, focus);
+    }
+
+    public function set_theme_mode(mode: int) {
+        theme_mode = mode;
+        theme_system_checked = (mode == 0);
+        theme_light_checked = (mode == 1);
+        theme_dark_checked = (mode == 2);
+    }
+
+    public function set_language_mode(mode: int) {
+        language_mode = mode;
+        lang_system_checked = (mode == 0);
+        lang_en_checked = (mode == 1);
+        lang_ru_checked = (mode == 2);
+    }
+
+    public function set_editor_font_mode(mode: int) {
+        editor_font_mode = mode;
+        font_system_checked = (mode == 0);
+        font_hack_checked = (mode == 1);
+        font_ubuntu_checked = (mode == 2);
+        font_ubuntu_mono_checked = (mode == 3);
+        font_ubuntu_sans_checked = (mode == 4);
+    }
+
+    public function set_view_mode(mode: int) {
+        view_mode = mode;
+        view_split_checked = (mode == 0);
+        view_editor_checked = (mode == 1);
+        view_preview_checked = (mode == 2);
+        if mode == 1 {
+            active_code_block_index = -1;
+            active_preview_block_index = -1;
+        }
+    }
+
+    // Window-level shortcuts via unified Command Registry
+    FocusScope {
+        focus-on-tab-navigation: false;
+        key-pressed(event) => {
+            if event.text == Key.F6 {
+                root.handle_f6(event.modifiers.shift);
+                return accept;
+            }
+            if event.text == Key.Control || event.text == Key.Shift || event.text == Key.Alt || event.text == Key.AltGr || event.text == Key.Meta {
+                return reject;
+            }
+            if root.shortcut_requested(event.text, event.modifiers.control, event.modifiers.alt, event.modifiers.shift, event.modifiers.meta) {
+                return accept;
+            }
+            reject
+        }
+    }
+
+    // Reactive properties
+    in-out property <string> markdown_text: "";
+    in property <[MarkdownBlockData]> preview_blocks: [];
+    in property <int> word_count: 0;
+    in property <int> char_count: 0;
+    in property <int> line_count: 0;
+    out property <int> editor_cursor_pos: editor.cursor_position;
+    out property <int> editor_anchor_pos: editor.anchor_position;
+    out property <bool> editor_has_selection: editor.cursor_position != editor.anchor_position;
+    out property <bool> editor_has_focus: editor.has_focus;
+    out property <bool> preview_has_focus: preview_focus.has-focus;
+    out property <bool> file_tree_has_focus: file_tree_scope.has-focus;
+    in-out property <int> selected_tree_index: 0;
+    in-out property <int> unsaved_dialog_focus_index: 2;
+    in-out property <int> table_dialog_focus_index: 1;
+
+    // Active code block selection tracking in preview
+    in-out property <int> active_code_block_index: -1;
+    in-out property <int> active_code_block_anchor: 0;
+    in-out property <int> active_code_block_cursor: 0;
+    out property <bool> active_code_block_has_selection:
+        root.active_code_block_index >= 0 && root.active_code_block_anchor != root.active_code_block_cursor;
+
+    // Active preview block tracking (headings, quotes, tables, tasks, footnotes, paragraphs, code)
+    in-out property <int> active_preview_block_index: -1;
+    in-out property <int> copied_preview_block_index: -1;
+
+    out property <string> active_block_copy_menu_title:
+        (root.active_preview_block_index >= 0 && root.active_preview_block_index < root.preview_blocks.length) ?
+            (root.preview_blocks[root.active_preview_block_index].block_type == "heading" ? @tr("Copy Heading") :
+             root.preview_blocks[root.active_preview_block_index].block_type == "quote" ? @tr("Copy Quote") :
+             root.preview_blocks[root.active_preview_block_index].block_type == "footnote" ? @tr("Copy Footnote") :
+             root.preview_blocks[root.active_preview_block_index].block_type == "table" ? @tr("Copy Table") :
+             root.preview_blocks[root.active_preview_block_index].block_type == "task" ? @tr("Copy Task") :
+             root.preview_blocks[root.active_preview_block_index].block_type == "code" ? @tr("Copy Code Block") :
+             @tr("Copy Paragraph")) : @tr("Copy Block");
+
+    changed editor_has_focus => {
+        if root.editor_has_focus {
+            root.active_code_block_index = -1;
+            root.active_preview_block_index = -1;
+            editor.clear_selection();
+        }
+    }
+
+    // Layout and panel sizing
+    in-out property <length> sidebar_width: 240px;
+    in-out property <length> editor_width: 450px;
+
+    // File Tree properties
+    in-out property <bool> show_files_sidebar: true;
+    in property <string> current_directory_name: "";
+    in property <string> current_directory_path: "";
+    in property <string> current_file_name: "";
+    in property <string> current_file_path: "";
+    in property <bool> is_modified: false;
+    in property <[FileTreeItemData]> file_tree: [];
+    in property <int> file_count: 0;
+
+    // Unsaved changes dialog
+    in-out property <bool> show_unsaved_dialog: false;
+
+    // Table insertion dialog
+    in-out property <bool> show_table_dialog: false;
+    in-out property <int> table_dialog_cols: 2;
+    in-out property <int> table_dialog_rows: 2;
+
+    // Settings
+    in-out property <bool> word_wrap: true;
+    in-out property <bool> show_status_bar: true;
+    in property <length> estimated_preview_height: 0px;
+    in property <length> estimated_preview_height_no_wrap: 0px;
+
+    // Footnote navigation
+    in-out property <length> footnote_return_y: 0px;
+
+    // Preview copy feedback (0 = none, 1 = HTML copied, 2 = Text copied)
+    in-out property <int> copied_code_block_index: -1;
+    in-out property <int> preview_copy_feedback: 0;
+
+    // Callbacks
+    callback text_edited(string);
+    callback copy_code_block(string, int);
+    callback copy_code_block_selection(string, int, int, int);
+    callback copy_preview_block(string, int);
+    callback copy_preview_html_clicked();
+    callback copy_preview_text_clicked();
+    callback copy_markdown_clicked();
+    callback new_file_clicked();
+    callback load_sample_clicked();
+    callback clear_clicked();
+    callback theme_changed(int);
+    callback language_changed(int);
+    callback file_selected(string);
+    callback folder_toggled(string);
+    callback refresh_files_clicked();
+    callback open_file_clicked();
+    callback save_file_clicked();
+    callback save_as_clicked();
+    callback exit_clicked();
+    callback about_clicked();
+    callback licenses_clicked();
+    callback help_guide_clicked();
+    callback insert_formatting(string);
+    callback insert_snippet(string);
+    callback tab_pressed();
+    callback backtab_pressed();
+    callback undo_requested();
+    callback redo_requested();
+    callback unsaved_dialog_save();
+    callback unsaved_dialog_discard();
+    callback unsaved_dialog_cancel();
+    callback insert_custom_table(int, int);
+    callback open_external_url(string);
+    callback save_footnote_pos(string, length);
+    callback get_footnote_pos(string) -> ScrollTarget;
+    callback shortcut_requested(string, bool, bool, bool, bool) -> bool;
+
+    public function handle_preview_link(url: string) {
+        if (url == "") {
+            return;
+        }
+        if (url.starts-with("#fn-")) {
+            root.footnote_return_y = preview_scroll.content-y;
+            root.save_footnote_pos(url, preview_scroll.content-y);
+            preview_scroll.content-y = -max(0px, preview_scroll.content-height - preview_scroll.visible-height);
+        } else if (url.starts-with("#fnref-")) {
+            let target = root.get_footnote_pos(url);
+            if (target.found) {
+                preview_scroll.content-y = min(0px, target.y);
+            } else if (root.footnote_return_y != 0px) {
+                preview_scroll.content-y = root.footnote_return_y;
+            } else {
+                preview_scroll.content-y = 0px;
+            }
+        } else if (url.starts-with("#")) {
+            preview_scroll.content-y = 0px;
+        } else {
+            root.open_external_url(url);
+        }
+    }
+
+    MenuBar {
+        Menu {
+            title: @tr("File");
+            MenuItem {
+                title: @tr("New Document");
+                shortcut: @keys(Control + N);
+                activated => { root.new_file_clicked(); }
+            }
+            MenuItem {
+                title: @tr("Open File...");
+                shortcut: @keys(Control + O);
+                activated => { root.open_file_clicked(); }
+            }
+            MenuItem {
+                title: root.is_modified ? @tr("Save") + " *" : @tr("Save");
+                shortcut: @keys(Control + S);
+                activated => { root.save_file_clicked(); }
+            }
+            MenuItem {
+                title: @tr("Save As...");
+                shortcut: @keys(Control + Shift + S);
+                activated => { root.save_as_clicked(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Load GFM Sample");
+                activated => { root.load_sample_clicked(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Exit");
+                shortcut: @keys(Control + Q);
+                activated => { root.exit_clicked(); }
+            }
+        }
+
+        Menu {
+            title: @tr("Edit");
+            MenuItem {
+                title: @tr("Undo");
+                shortcut: @keys(Control + Z);
+                activated => { root.undo_requested(); }
+            }
+            MenuItem {
+                title: @tr("Redo");
+                shortcut: @keys(Control + Shift + Z);
+                activated => { root.redo_requested(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Cut");
+                shortcut: @keys(Control + X);
+                activated => { editor.cut(); }
+            }
+            MenuItem {
+                title: @tr("Copy");
+                shortcut: @keys(Control + C);
+                activated => { root.copy(); }
+            }
+            MenuItem {
+                title: @tr("Paste");
+                shortcut: @keys(Control + V);
+                activated => { editor.paste(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Select All");
+                shortcut: @keys(Control + A);
+                activated => { editor.select_all(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Copy Preview as HTML");
+                shortcut: @keys(Control + Shift + C);
+                activated => { root.copy_preview_html_clicked(); }
+            }
+            MenuItem {
+                title: @tr("Copy Preview as Plain Text");
+                activated => { root.copy_preview_text_clicked(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Insert Heading 1");
+                shortcut: @keys(Control + "1");
+                activated => { root.insert_formatting("h1"); }
+            }
+            MenuItem {
+                title: @tr("Insert Heading 2");
+                shortcut: @keys(Control + "2");
+                activated => { root.insert_formatting("h2"); }
+            }
+            MenuItem {
+                title: @tr("Bold (**text**)");
+                shortcut: @keys(Control + B);
+                activated => { root.insert_formatting("bold"); }
+            }
+            MenuItem {
+                title: @tr("Italic (*text*)");
+                shortcut: @keys(Control + I);
+                activated => { root.insert_formatting("italic"); }
+            }
+            MenuItem {
+                title: @tr("Strikethrough (~~text~~)");
+                activated => { root.insert_formatting("strikethrough"); }
+            }
+            MenuItem {
+                title: @tr("Code Block (```)");
+                shortcut: @keys(Control + K);
+                activated => { root.insert_formatting("code_block"); }
+            }
+            MenuItem {
+                title: @tr("GFM Table...");
+                shortcut: @keys(Control + Shift + T);
+                activated => {
+                    root.table_dialog_cols = 2;
+                    root.table_dialog_rows = 2;
+                    root.show_table_dialog = true;
+                }
+            }
+            MenuItem {
+                title: @tr("Task List (- [ ])");
+                activated => { root.insert_formatting("task_list"); }
+            }
+            MenuItem {
+                title: @tr("Blockquote (> )");
+                activated => { root.insert_formatting("blockquote"); }
+            }
+            MenuItem {
+                title: @tr("Footnote ([^1])");
+                activated => { root.insert_formatting("footnote"); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Clear All");
+                activated => { root.clear_clicked(); }
+            }
+        }
+
+        Menu {
+            title: @tr("View");
+            MenuItem {
+                title: @tr("Files Panel");
+                shortcut: @keys(Control + Shift + B);
+                checkable: true;
+                checked <=> root.show_files_sidebar;
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Split (Editor + Preview)");
+                shortcut: @keys(Control + Shift + "1");
+                checkable: true;
+                checked <=> root.view_split_checked;
+                activated => { root.set_view_mode(0); }
+            }
+            MenuItem {
+                title: @tr("Editor Only");
+                shortcut: @keys(Control + Shift + "2");
+                checkable: true;
+                checked <=> root.view_editor_checked;
+                activated => { root.set_view_mode(1); }
+            }
+            MenuItem {
+                title: @tr("Preview Only");
+                shortcut: @keys(Control + Shift + "3");
+                checkable: true;
+                checked <=> root.view_preview_checked;
+                activated => { root.set_view_mode(2); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Refresh Files");
+                shortcut: @keys(F5);
+                activated => { root.refresh_files_clicked(); }
+            }
+        }
+
+        Menu {
+            title: @tr("Settings");
+            MenuItem {
+                title: @tr("Word Wrap");
+                checkable: true;
+                checked <=> root.word_wrap;
+            }
+            MenuItem {
+                title: @tr("Status Bar");
+                checkable: true;
+                checked <=> root.show_status_bar;
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Theme: System (Auto)");
+                checkable: true;
+                checked <=> root.theme_system_checked;
+                activated => {
+                    root.set_theme_mode(0);
+                    root.theme_changed(0);
+                }
+            }
+            MenuItem {
+                title: @tr("Theme: Breeze Light");
+                checkable: true;
+                checked <=> root.theme_light_checked;
+                activated => {
+                    root.set_theme_mode(1);
+                    root.theme_changed(1);
+                }
+            }
+            MenuItem {
+                title: @tr("Theme: Breeze Dark");
+                checkable: true;
+                checked <=> root.theme_dark_checked;
+                activated => {
+                    root.set_theme_mode(2);
+                    root.theme_changed(2);
+                }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Language: System (Auto)");
+                checkable: true;
+                checked <=> root.lang_system_checked;
+                activated => {
+                    root.set_language_mode(0);
+                    root.language_changed(0);
+                }
+            }
+            MenuItem {
+                title: @tr("Language: English");
+                checkable: true;
+                checked <=> root.lang_en_checked;
+                activated => {
+                    root.set_language_mode(1);
+                    root.language_changed(1);
+                }
+            }
+            MenuItem {
+                title: @tr("Language: Русский");
+                checkable: true;
+                checked <=> root.lang_ru_checked;
+                activated => {
+                    root.set_language_mode(2);
+                    root.language_changed(2);
+                }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Font: System (Monospace)");
+                checkable: true;
+                checked <=> root.font_system_checked;
+                activated => { root.set_editor_font_mode(0); }
+            }
+            MenuItem {
+                title: @tr("Font: Hack Nerd Font");
+                checkable: true;
+                checked <=> root.font_hack_checked;
+                activated => { root.set_editor_font_mode(1); }
+            }
+            MenuItem {
+                title: @tr("Font: Ubuntu Nerd Font");
+                checkable: true;
+                checked <=> root.font_ubuntu_checked;
+                activated => { root.set_editor_font_mode(2); }
+            }
+            MenuItem {
+                title: @tr("Font: Ubuntu Mono Nerd Font");
+                checkable: true;
+                checked <=> root.font_ubuntu_mono_checked;
+                activated => { root.set_editor_font_mode(3); }
+            }
+            MenuItem {
+                title: @tr("Font: Ubuntu Sans Nerd Font");
+                checkable: true;
+                checked <=> root.font_ubuntu_sans_checked;
+                activated => { root.set_editor_font_mode(4); }
+            }
+        }
+
+        Menu {
+            title: @tr("Help");
+            MenuItem {
+                title: @tr("GFM Guide (Load Sample)");
+                shortcut: @keys(F1);
+                activated => { root.help_guide_clicked(); }
+            }
+            MenuSeparator {}
+            MenuItem {
+                title: @tr("Licenses...");
+                shortcut: @keys(Control + L);
+                activated => { root.licenses_clicked(); }
+            }
+            MenuItem {
+                title: @tr("About Markdown Editor...");
+                activated => { root.about_clicked(); }
+            }
+        }
+    }
+
+    VerticalLayout {
+        padding: 0px;
+        spacing: 0px;
+
+        // Top Divider below MenuBar
+        Rectangle {
+            height: 1px;
+            background: Theme.divider;
+        }
+
+        // --- Main Work Area ---
+        work_area := HorizontalLayout {
+            vertical-stretch: 1;
+            padding: 0px;
+            spacing: 0px;
+
+            // --- Leftmost Files Sidebar Pane ---
+            sidebar_pane := Rectangle {
+                visible: root.show_files_sidebar;
+                width: root.show_files_sidebar ? root.sidebar_width : 0px;
+                horizontal-stretch: 0;
+                background: Theme.sidebar_bg;
+
+                // Active Pane Focus Indicator
+                Rectangle {
+                    y: 0px;
+                    height: 2px;
+                    width: 100%;
+                    background: Theme.accent;
+                    visible: root.file_tree_has_focus;
+                }
+
+                file_tree_scope := FocusScope {
+                    width: 100%;
+                    height: 100%;
+                    enabled: root.show_files_sidebar;
+
+                    key-pressed(event) => {
+                        if event.text == Key.Tab || event.text == "\u{0009}" {
+                            if !event.modifiers.shift {
+                                root.focus_next_pane();
+                                return accept;
+                            } else {
+                                root.focus_prev_pane();
+                                return accept;
+                            }
+                        }
+                        if event.text == Key.Backtab {
+                            root.focus_prev_pane();
+                            return accept;
+                        }
+                        if event.text == Key.DownArrow {
+                            if root.file_tree.length > 0 {
+                                root.selected_tree_index = min(root.file_tree.length - 1, root.selected_tree_index + 1);
+                                let item_y = root.selected_tree_index * 30px;
+                                if (-file_scroll.content-y + file_scroll.visible-height < item_y + 30px) {
+                                    file_scroll.content-y = -(item_y + 30px - file_scroll.visible-height);
+                                }
+                            }
+                            return accept;
+                        }
+                        if event.text == Key.UpArrow {
+                            if root.file_tree.length > 0 {
+                                root.selected_tree_index = max(0, root.selected_tree_index - 1);
+                                let item_y = root.selected_tree_index * 30px;
+                                if (-file_scroll.content-y > item_y) {
+                                    file_scroll.content-y = -item_y;
+                                }
+                            }
+                            return accept;
+                        }
+                        if event.text == Key.Return || event.text == Key.Space {
+                            if root.selected_tree_index >= 0 && root.selected_tree_index < root.file_tree.length {
+                                let item = root.file_tree[root.selected_tree_index];
+                                if item.is_dir {
+                                    root.folder_toggled(item.path);
+                                } else {
+                                    root.file_selected(item.path);
+                                }
+                            }
+                            return accept;
+                        }
+                        if event.text == Key.RightArrow {
+                            if root.selected_tree_index >= 0 && root.selected_tree_index < root.file_tree.length {
+                                let item = root.file_tree[root.selected_tree_index];
+                                if item.is_dir && !item.is_expanded {
+                                    root.folder_toggled(item.path);
+                                }
+                            }
+                            return accept;
+                        }
+                        if event.text == Key.LeftArrow {
+                            if root.selected_tree_index >= 0 && root.selected_tree_index < root.file_tree.length {
+                                let item = root.file_tree[root.selected_tree_index];
+                                if item.is_dir && item.is_expanded {
+                                    root.folder_toggled(item.path);
+                                }
+                            }
+                            return accept;
+                        }
+                        if event.text == Key.Control || event.text == Key.Shift || event.text == Key.Alt || event.text == Key.AltGr || event.text == Key.Meta {
+                            return reject;
+                        }
+                        if root.shortcut_requested(event.text, event.modifiers.control, event.modifiers.alt, event.modifiers.shift, event.modifiers.meta) {
+                            return accept;
+                        }
+                        reject
+                    }
+
+                    // File Tree ScrollView
+                    file_scroll := ScrollView {
+                        horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                        content-width: self.visible-width;
+                        content-height: max(self.visible-height, root.file_tree.length == 0 ? 60px : (root.file_tree.length * 30px + 16px));
+
+                        tree_layout := VerticalLayout {
+                            width: file_scroll.visible-width;
+                            padding-top: 6px;
+                            padding-bottom: 6px;
+                            padding-left: 6px;
+                            padding-right: 6px;
+                            spacing: 2px;
+                            alignment: start;
+
+                            if root.file_count == 0 : HorizontalLayout {
+                                padding-top: 20px;
+                                padding-left: 8px;
+                                alignment: start;
+                                Text {
+                                    text: @tr("No .md files in directory");
+                                    font-size: 12px;
+                                    color: Theme.text_muted;
+                                    horizontal-alignment: left;
+                                }
+                            }
+
+                            for item[idx] in root.file_tree : Rectangle {
+                                property <bool> is_keyboard_focused: file_tree_scope.has-focus && root.selected_tree_index == idx;
+                                height: 28px;
+                                border-radius: 4px;
+                                background: item.is_active ? Theme.item_active_bg : (self.is_keyboard_focused ? Theme.item_hover : (item_touch.has-hover ? Theme.item_hover : transparent));
+                                border-width: (item.is_active || self.is_keyboard_focused) ? 1px : 0px;
+                                border-color: self.is_keyboard_focused ? Theme.accent : Theme.item_active_border;
+
+                                HorizontalLayout {
+                                    padding-left: 8px + (item.depth * 14px);
+                                    padding-right: 8px;
+                                    spacing: 5px;
+                                    alignment: start;
+
+                                    // Directory chevron (expand / collapse)
+                                    if item.is_dir : Text {
+                                        text: item.is_expanded ? "\u{f078}" : "\u{f054}";
+                                        font-family: "Symbols Nerd Font";
+                                        font-size: 9px;
+                                        color: Theme.text_secondary;
+                                        vertical-alignment: center;
+                                        horizontal-alignment: left;
+                                    }
+
+                                    // Icon: Folder or File (Nerd Fonts / Devicons / Octicons)
+                                    Text {
+                                        text: item.is_dir ? (item.is_expanded ? "\u{f07c}" : "\u{f07b}") : (item.is_active ? "\u{f044}" : "\u{e60b}");
+                                        font-family: "Symbols Nerd Font";
+                                        font-size: 13px;
+                                        color: item.is_active ? Theme.accent : (item.is_dir ? Theme.accent : Theme.text_secondary);
+                                        vertical-alignment: center;
+                                        horizontal-alignment: left;
+                                    }
+
+                                    // Name
+                                    Text {
+                                        text: item.name;
+                                        font-size: 12px;
+                                        font-weight: (item.is_active || item.is_dir) ? 700 : 400;
+                                        color: item.is_active ? Theme.item_active_text : (item.is_dir ? Theme.text_primary : Theme.text_secondary);
+                                        overflow: elide;
+                                        vertical-alignment: center;
+                                        horizontal-alignment: left;
+                                        horizontal-stretch: 1;
+                                    }
+                                }
+
+                                item_touch := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        file_tree_scope.focus();
+                                        root.selected_tree_index = idx;
+                                        if item.is_dir {
+                                            root.folder_toggled(item.path);
+                                        } else {
+                                            root.file_selected(item.path);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Splitter between Sidebar and Editor
+            if root.show_files_sidebar : Splitter {
+                moved(delta) => {
+                    root.sidebar_width = max(140px, min(work_area.width - 320px, root.sidebar_width + delta));
+                }
+            }
+
+            // --- Middle Editor Pane ---
+            editor_pane := Rectangle {
+                visible: root.view_mode != 2;
+                min-width: root.view_mode == 0 ? root.editor_width : 0px;
+                max-width: root.view_mode == 0 ? root.editor_width : (root.view_mode == 2 ? 0px : 100000px);
+                preferred-width: root.view_mode == 0 ? root.editor_width : (root.view_mode == 2 ? 0px : 100px);
+                horizontal-stretch: root.view_mode == 1 ? 1 : 0;
+                background: Theme.view_bg;
+
+                // Active Pane Focus Indicator
+                Rectangle {
+                    y: 0px;
+                    height: 2px;
+                    width: 100%;
+                    background: Theme.accent;
+                    visible: root.editor_has_focus;
+                }
+
+                editor := MarkdownEditor {
+                    text <=> root.markdown_text;
+                    font_family: root.editor_font_family;
+                    font_size: 14px;
+                    wrap: root.word_wrap ? TextWrap.word-wrap : TextWrap.no-wrap;
+                    text_color: Theme.text_primary;
+                    selection_background_color: Theme.accent;
+                    selection_foreground_color: #ffffff;
+                    cursor_moved => {
+                        root.active_code_block_index = -1;
+                        root.active_preview_block_index = -1;
+                    }
+                    edited(new_text) => {
+                        root.active_code_block_index = -1;
+                        root.active_preview_block_index = -1;
+                        root.text_edited(new_text);
+                    }
+                    formatting_requested(kind) => {
+                        root.insert_formatting(kind);
+                    }
+                    tab_pressed => {
+                        root.tab_pressed();
+                    }
+                    backtab_pressed => {
+                        root.focus_prev_pane();
+                    }
+                    next_pane_requested => {
+                        root.focus_next_pane();
+                    }
+                    undo_requested => {
+                        root.undo_requested();
+                    }
+                    redo_requested => {
+                        root.redo_requested();
+                    }
+                    shortcut_requested(text, ctrl, alt, shift, meta) => {
+                        root.shortcut_requested(text, ctrl, alt, shift, meta)
+                    }
+                }
+            }
+
+            // Splitter between Editor and Preview
+            if root.view_mode == 0 : Splitter {
+                moved(delta) => {
+                    let max_w = work_area.width - (root.show_files_sidebar ? root.sidebar_width : 0px) - 160px;
+                    root.editor_width = max(150px, min(max_w, root.editor_width + delta));
+                }
+            }
+
+            // --- Right Preview Pane ---
+            preview_pane := Rectangle {
+                visible: root.view_mode != 1;
+                min-width: root.view_mode == 1 ? 0px : 150px;
+                max-width: root.view_mode == 1 ? 0px : 100000px;
+                horizontal-stretch: root.view_mode == 1 ? 0 : 1;
+                background: Theme.view_bg;
+
+                // Active Pane Focus Indicator
+                Rectangle {
+                    y: 0px;
+                    height: 2px;
+                    width: 100%;
+                    background: Theme.accent;
+                    visible: root.preview_has_focus;
+                }
+
+                // Preview Context Menu
+                preview_context := ContextMenuArea {
+                    Menu {
+                        if root.active_preview_block_index >= 0 : MenuItem {
+                            title: root.active_block_copy_menu_title;
+                            activated => { root.copy_active_preview_block(); }
+                        }
+                        if root.active_preview_block_index >= 0 : MenuSeparator {}
+                        MenuItem {
+                            title: @tr("Copy Preview as HTML");
+                            activated => { root.copy_preview_html_clicked(); }
+                        }
+                        MenuItem {
+                            title: @tr("Copy Preview as Plain Text");
+                            activated => { root.copy_preview_text_clicked(); }
+                        }
+                        MenuSeparator {}
+                        MenuItem {
+                            title: @tr("Copy Markdown");
+                            activated => { root.copy_markdown_clicked(); }
+                        }
+                    }
+
+                    preview_focus := FocusScope {
+                        width: 100%;
+                        height: 100%;
+
+                        key-pressed(event) => {
+                            if event.text == Key.Tab || event.text == "\u{0009}" {
+                                if !event.modifiers.shift {
+                                    root.focus_next_pane();
+                                    return accept;
+                                } else {
+                                    root.focus_prev_pane();
+                                    return accept;
+                                }
+                            }
+                            if event.text == Key.Backtab {
+                                root.focus_prev_pane();
+                                return accept;
+                            }
+                            if event.text == Key.UpArrow {
+                                preview_scroll.content-y = min(0px, preview_scroll.content-y + 40px);
+                                return accept;
+                            }
+                            if event.text == Key.DownArrow {
+                                preview_scroll.content-y = max(preview_scroll.visible-height - preview_scroll.content-height, preview_scroll.content-y - 40px);
+                                return accept;
+                            }
+                            if event.text == Key.PageUp {
+                                preview_scroll.content-y = min(0px, preview_scroll.content-y + preview_scroll.visible-height);
+                                return accept;
+                            }
+                            if event.text == Key.PageDown {
+                                preview_scroll.content-y = max(preview_scroll.visible-height - preview_scroll.content-height, preview_scroll.content-y - preview_scroll.visible-height);
+                                return accept;
+                            }
+                            // Copy shortcut: Ctrl+C / Cmd+C across all layouts (Latin, Cyrillic, ASCII control 0x03)
+                            if (event.modifiers.control || event.modifiers.meta) && !event.modifiers.alt {
+                                if event.text == "c" || event.text == "C" || event.text == "\u{0003}" || event.text == "с" || event.text == "С" {
+                                    root.copy();
+                                    return accept;
+                                }
+                            }
+                            if event.text == Key.Escape {
+                                root.active_preview_block_index = -1;
+                                return accept;
+                            }
+                            if event.text == Key.Control || event.text == Key.Shift || event.text == Key.Alt || event.text == Key.AltGr || event.text == Key.Meta {
+                                return reject;
+                            }
+                            if root.shortcut_requested(event.text, event.modifiers.control, event.modifiers.alt, event.modifiers.shift, event.modifiers.meta) {
+                                return accept;
+                            }
+                            reject
+                        }
+
+                        // Preview Content
+                        preview_scroll := ScrollView {
+                        content-width: root.word_wrap ? self.visible-width : max(self.visible-width, preview_layout.preferred-width);
+                        content-height: max(self.visible-height, max(preview_layout.preferred-height, root.word_wrap ? root.estimated_preview_height : root.estimated_preview_height_no_wrap));
+
+                        preview_layout := VerticalLayout {
+                            width: root.word_wrap ? preview_scroll.visible-width : max(preview_scroll.visible-width, preview_layout.preferred-width);
+                            alignment: start;
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            padding-top: 12px;
+                            padding-bottom: 48px;
+                            spacing: 12px;
+
+                            for block[block_idx] in root.preview_blocks : VerticalLayout {
+                                spacing: 4px;
+
+                                // Headings H1-H6
+                                if block.block_type == "heading" : Rectangle {
+                                    border-radius: 4px;
+                                    border-width: 1px;
+                                    border-color: root.copied_preview_block_index == block_idx ? Theme.success :
+                                                  (root.active_preview_block_index == block_idx ? Theme.accent : transparent);
+                                    background: root.copied_preview_block_index == block_idx ? (Theme.is_dark ? #27ae6020 : #27ae6015) :
+                                                (root.active_preview_block_index == block_idx ? (Theme.is_dark ? #3daee918 : #3daee912) : transparent);
+
+                                    HorizontalLayout {
+                                        padding-left: 6px;
+                                        padding-right: 6px;
+                                        padding-top: block.level == 1 ? 12px : (block.level == 2 ? 8px : 4px);
+                                        padding-bottom: 4px;
+                                        StyledText {
+                                            horizontal-stretch: 1;
+                                            text: block.styled_content;
+                                            default-font-size: block.level == 1 ? 24px : (block.level == 2 ? 20px : (block.level == 3 ? 17px : 15px));
+                                            default-color: Theme.heading;
+                                            link-color: Theme.accent;
+                                        }
+                                    }
+
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        pointer-event(ev) => {
+                                            if ev.kind == PointerEventKind.down {
+                                                root.active_preview_block_index = block_idx;
+                                                root.active_code_block_index = -1;
+                                                preview_focus.focus();
+                                                if ev.button == PointerEventButton.right {
+                                                    preview_context.show({
+                                                        x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                        y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                    });
+                                                }
+                                            }
+                                        }
+                                        clicked => {
+                                            root.active_preview_block_index = block_idx;
+                                            root.active_code_block_index = -1;
+                                            preview_focus.focus();
+                                            root.copy_preview_block(block.content, block_idx);
+                                        }
+                                    }
+                                }
+
+                                // Paragraphs and List Items
+                                if block.block_type == "paragraph" : Rectangle {
+                                    border-radius: 4px;
+                                    border-width: 1px;
+                                    border-color: root.copied_preview_block_index == block_idx ? Theme.success :
+                                                  (root.active_preview_block_index == block_idx ? Theme.accent : transparent);
+                                    background: root.copied_preview_block_index == block_idx ? (Theme.is_dark ? #27ae6020 : #27ae6015) :
+                                                (root.active_preview_block_index == block_idx ? (Theme.is_dark ? #3daee918 : #3daee912) : transparent);
+
+                                    if block.has_links : TouchArea {
+                                        mouse-cursor: pointer;
+                                        pointer-event(ev) => {
+                                            if ev.kind == PointerEventKind.down {
+                                                root.active_preview_block_index = block_idx;
+                                                root.active_code_block_index = -1;
+                                                preview_focus.focus();
+                                                if ev.button == PointerEventButton.right {
+                                                    preview_context.show({
+                                                        x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                        y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                    });
+                                                }
+                                            }
+                                        }
+                                        clicked => {
+                                            root.active_preview_block_index = block_idx;
+                                            root.active_code_block_index = -1;
+                                            preview_focus.focus();
+                                            root.copy_preview_block(block.content, block_idx);
+                                        }
+                                    }
+
+                                    HorizontalLayout {
+                                        padding-left: block.level > 0 ? (block.level * 20px + 6px) : 6px;
+                                        padding-right: 6px;
+                                        padding-top: 2px;
+                                        padding-bottom: 2px;
+                                        StyledText {
+                                             horizontal-stretch: 1;
+                                             text: block.styled_content;
+                                             default-font-size: 14px;
+                                             default-color: Theme.paragraph;
+                                             link-color: Theme.accent;
+                                             link-clicked(url) => {
+                                                 root.active_preview_block_index = block_idx;
+                                                 root.active_code_block_index = -1;
+                                                 preview_focus.focus();
+                                                 root.handle_preview_link(url);
+                                             }
+                                        }
+                                    }
+
+                                    if !block.has_links : TouchArea {
+                                        mouse-cursor: pointer;
+                                        pointer-event(ev) => {
+                                            if ev.kind == PointerEventKind.down {
+                                                root.active_preview_block_index = block_idx;
+                                                root.active_code_block_index = -1;
+                                                preview_focus.focus();
+                                                if ev.button == PointerEventButton.right {
+                                                    preview_context.show({
+                                                        x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                        y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                    });
+                                                }
+                                            }
+                                        }
+                                        clicked => {
+                                            root.active_preview_block_index = block_idx;
+                                            root.active_code_block_index = -1;
+                                            preview_focus.focus();
+                                            root.copy_preview_block(block.content, block_idx);
+                                        }
+                                    }
+                                }
+
+                                // GFM Task Lists (- [ ] / - [x])
+                                if block.block_type == "task" : Rectangle {
+                                    border-radius: 4px;
+                                    border-width: 1px;
+                                    border-color: root.copied_preview_block_index == block_idx ? Theme.success :
+                                                  (root.active_preview_block_index == block_idx ? Theme.accent : transparent);
+                                    background: root.copied_preview_block_index == block_idx ? (Theme.is_dark ? #27ae6020 : #27ae6015) :
+                                                (root.active_preview_block_index == block_idx ? (Theme.is_dark ? #3daee918 : #3daee912) : transparent);
+
+                                    HorizontalLayout {
+                                        padding-left: block.level > 0 ? (block.level * 20px + 6px) : 6px;
+                                        padding-right: 6px;
+                                        padding-top: 2px;
+                                        padding-bottom: 2px;
+                                        spacing: 8px;
+                                        if block.extra != "" : Text {
+                                            text: block.extra;
+                                            font-size: 14px;
+                                            color: Theme.text_secondary;
+                                            vertical-alignment: top;
+                                        }
+                                        VerticalLayout {
+                                            alignment: start;
+                                            CheckBox {
+                                                checked: block.is_checked;
+                                                enabled: false;
+                                            }
+                                        }
+                                        StyledText {
+                                            horizontal-stretch: 1;
+                                            text: block.styled_content;
+                                            default-font-size: 14px;
+                                            default-color: block.is_checked ? Theme.text_muted : Theme.paragraph;
+                                            link-color: Theme.accent;
+                                        }
+                                    }
+
+                                    TouchArea {
+                                        mouse-cursor: pointer;
+                                        pointer-event(ev) => {
+                                            if ev.kind == PointerEventKind.down {
+                                                root.active_preview_block_index = block_idx;
+                                                root.active_code_block_index = -1;
+                                                preview_focus.focus();
+                                                if ev.button == PointerEventButton.right {
+                                                    preview_context.show({
+                                                        x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                        y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                    });
+                                                }
+                                            }
+                                        }
+                                        clicked => {
+                                            root.active_preview_block_index = block_idx;
+                                            root.active_code_block_index = -1;
+                                            preview_focus.focus();
+                                            root.copy_preview_block(block.content, block_idx);
+                                        }
+                                    }
+                                }
+
+                                // Blockquotes (> quote)
+                                if block.block_type == "quote" : HorizontalLayout {
+                                    alignment: start;
+                                    Rectangle {
+                                        width: root.word_wrap ? (preview_scroll.visible-width - 32px) : max(preview_scroll.visible-width - 32px, quote_inner.preferred-width);
+                                        preferred-width: root.word_wrap ? (preview_scroll.visible-width - 32px) : quote_inner.preferred-width;
+                                        background: root.copied_preview_block_index == block_idx ? (Theme.is_dark ? #27ae6020 : #27ae6015) :
+                                                    (root.active_preview_block_index == block_idx ? (Theme.is_dark ? #3daee918 : #3daee912) : Theme.blockquote_bg);
+                                        border-radius: 4px;
+                                        border-width: 1px;
+                                        border-color: root.copied_preview_block_index == block_idx ? Theme.success :
+                                                      (root.active_preview_block_index == block_idx ? Theme.accent : Theme.border);
+
+                                        quote_inner := HorizontalLayout {
+                                            padding-left: 12px;
+                                            padding-right: 12px;
+                                            padding-top: 8px;
+                                            padding-bottom: 8px;
+                                            spacing: 10px;
+                                            Rectangle {
+                                                width: 4px;
+                                                background: Theme.blockquote_border;
+                                                border-radius: 2px;
+                                            }
+                                            StyledText {
+                                                horizontal-stretch: 1;
+                                                text: block.styled_content;
+                                                default-font-size: 14px;
+                                                default-color: Theme.text_secondary;
+                                                link-color: Theme.accent;
+                                            }
+                                        }
+
+                                        TouchArea {
+                                            mouse-cursor: pointer;
+                                            pointer-event(ev) => {
+                                                if ev.kind == PointerEventKind.down {
+                                                    root.active_preview_block_index = block_idx;
+                                                    root.active_code_block_index = -1;
+                                                    preview_focus.focus();
+                                                    if ev.button == PointerEventButton.right {
+                                                        preview_context.show({
+                                                            x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                            y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                            clicked => {
+                                                root.active_preview_block_index = block_idx;
+                                                root.active_code_block_index = -1;
+                                                preview_focus.focus();
+                                                root.copy_preview_block(block.content, block_idx);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Code Blocks (```lang ... ```)
+                                if block.block_type == "code" : HorizontalLayout {
+                                    alignment: start;
+                                    Rectangle {
+                                        width: root.word_wrap ? (preview_scroll.visible-width - 32px) : max(preview_scroll.visible-width - 32px, code_inner.preferred-width);
+                                        preferred-width: root.word_wrap ? (preview_scroll.visible-width - 32px) : (code_inner.preferred-width + 24px);
+                                        background: Theme.code_block_bg;
+                                        border-radius: 6px;
+                                        border-width: 1px;
+                                        border-color: (root.copied_code_block_index == block_idx || root.copied_preview_block_index == block_idx) ? Theme.success :
+                                                      (root.active_code_block_index == block_idx || root.active_preview_block_index == block_idx ? Theme.accent : Theme.border);
+
+                                        TouchArea {
+                                            pointer-event(ev) => {
+                                                if ev.kind == PointerEventKind.down {
+                                                    root.active_preview_block_index = block_idx;
+                                                    root.active_code_block_index = block_idx;
+                                                    preview_focus.focus();
+                                                    if ev.button == PointerEventButton.right {
+                                                        preview_context.show({
+                                                            x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                            y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        code_inner := VerticalLayout {
+                                            padding: 12px;
+                                            spacing: 8px;
+                                            HorizontalLayout {
+                                                alignment: space-between;
+                                                if block.extra != "" : Text {
+                                                    text: block.extra;
+                                                    color: Theme.code_lang;
+                                                    font-size: 11px;
+                                                    font-weight: 700;
+                                                    horizontal-alignment: left;
+                                                    vertical-alignment: center;
+                                                }
+                                                if block.extra == "" : Rectangle { width: 1px; }
+
+                                                // Copy code block button
+                                                Rectangle {
+                                                    height: 22px;
+                                                    border-radius: 4px;
+                                                    background: btn_copy_code.has-hover ? (Theme.is_dark ? #3e4750 : #334155) : transparent;
+                                                    border-width: 1px;
+                                                    border-color: btn_copy_code.has-hover ? Theme.border : transparent;
+
+                                                    HorizontalLayout {
+                                                        padding-left: 6px;
+                                                        padding-right: 6px;
+                                                        spacing: 4px;
+                                                        alignment: center;
+
+                                                        Text {
+                                                            text: root.copied_code_block_index == block_idx ? "\u{f00c}" : "\u{f0c5}";
+                                                            font-family: "Symbols Nerd Font";
+                                                            font-size: 11px;
+                                                            color: root.copied_code_block_index == block_idx ? Theme.success : (btn_copy_code.has-hover ? #ffffff : Theme.text_secondary);
+                                                            vertical-alignment: center;
+                                                        }
+
+                                                        Text {
+                                                            text: root.copied_code_block_index == block_idx ? @tr("Copied") : @tr("Copy");
+                                                            font-size: 10px;
+                                                            font-weight: 600;
+                                                            color: root.copied_code_block_index == block_idx ? Theme.success : (btn_copy_code.has-hover ? #ffffff : Theme.text_secondary);
+                                                            vertical-alignment: center;
+                                                        }
+                                                    }
+
+                                                    btn_copy_code := TouchArea {
+                                                        mouse-cursor: pointer;
+                                                        clicked => {
+                                                            root.copy_code_block(block.content, block_idx);
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            code_input := TextInput {
+                                                text: block.content;
+                                                read-only: true;
+                                                single-line: false;
+                                                color: Theme.code_text;
+                                                selection-background-color: Theme.accent;
+                                                selection-foreground-color: #ffffff;
+                                                font-family: root.editor_font_family;
+                                                font-size: 13px;
+                                                horizontal-alignment: left;
+                                                wrap: root.word_wrap ? TextWrap.char-wrap : TextWrap.no-wrap;
+
+                                                cursor-position-changed(cpos) => {
+                                                    root.active_code_block_index = block_idx;
+                                                    root.active_preview_block_index = block_idx;
+                                                    root.active_code_block_anchor = self.anchor-position-byte-offset;
+                                                    root.active_code_block_cursor = self.cursor-position-byte-offset;
+                                                }
+
+                                                key-pressed(event) => {
+                                                    if event.text == Key.Tab || event.text == "\u{0009}" {
+                                                        if !event.modifiers.shift {
+                                                            root.focus_next_pane();
+                                                            return accept;
+                                                        } else {
+                                                            root.focus_prev_pane();
+                                                            return accept;
+                                                        }
+                                                    }
+                                                    if event.text == Key.Backtab {
+                                                        root.focus_prev_pane();
+                                                        return accept;
+                                                    }
+                                                    // 1. Copy shortcut: Ctrl+C / Cmd+C across all layouts (Latin, Cyrillic, ASCII control code 0x03)
+                                                    if (event.modifiers.control || event.modifiers.meta) && !event.modifiers.alt {
+                                                        if event.text == "c" || event.text == "C" || event.text == "\u{0003}" || event.text == "с" || event.text == "С" {
+                                                            self.copy();
+                                                            root.copy_code_block_selection(block.content, self.anchor-position-byte-offset, self.cursor-position-byte-offset, block_idx);
+                                                            return accept;
+                                                        }
+                                                        // 2. Select All shortcut: Ctrl+A / Cmd+A across all layouts
+                                                        if event.text == "a" || event.text == "A" || event.text == "\u{0001}" || event.text == "ф" || event.text == "Ф" {
+                                                            self.select-all();
+                                                            root.active_code_block_index = block_idx;
+                                                            root.active_code_block_anchor = 0;
+                                                            root.active_code_block_cursor = self.cursor-position-byte-offset;
+                                                            return accept;
+                                                        }
+                                                    }
+                                                    // 3. Modifier keys alone must never be consumed
+                                                    if event.text == Key.Control || event.text == Key.Shift || event.text == Key.Alt || event.text == Key.AltGr || event.text == Key.Meta {
+                                                        return reject;
+                                                    }
+                                                    // 4. Delegate global application shortcuts (Save, Open, New, Print, Licenses, Refresh, etc.)
+                                                    if event.modifiers.control || event.modifiers.alt || event.modifiers.meta || event.text == Key.Escape || event.text == Key.Return || event.text == Key.F1 || event.text == Key.F5 || event.text == Key.F6 {
+                                                        if root.shortcut_requested(event.text, event.modifiers.control, event.modifiers.alt, event.modifiers.shift, event.modifiers.meta) {
+                                                            return accept;
+                                                        }
+                                                    }
+                                                    reject
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Horizontal Rules (---)
+                                if block.block_type == "separator" : Rectangle {
+                                    height: 1px;
+                                    background: Theme.divider;
+                                }
+
+                                // GFM Tables (| A | B |)
+                                if block.block_type == "table" : HorizontalLayout {
+                                    alignment: start;
+                                    table_container := Rectangle {
+                                        property <length> avail_w: max(100px, preview_scroll.visible-width - 32px);
+                                        property <length> actual_table_w: root.word_wrap ? min(block.table_natural_width, self.avail_w) : block.table_natural_width;
+                                        width: self.actual_table_w;
+                                        preferred-width: self.actual_table_w;
+                                        border-width: 1px;
+                                        border-color: root.copied_preview_block_index == block_idx ? Theme.success :
+                                                      (root.active_preview_block_index == block_idx ? Theme.accent : Theme.table_border);
+                                        border-radius: 6px;
+                                        clip: true;
+
+                                        table_inner := VerticalLayout {
+                                            width: 100%;
+                                            spacing: 0px;
+                                            padding: 0px;
+
+                                            for row[row_idx] in block.rows : VerticalLayout {
+                                                spacing: 0px;
+                                                padding: 0px;
+
+                                                if row_idx > 0 : Rectangle {
+                                                    height: 1px;
+                                                    background: Theme.table_border;
+                                                }
+
+                                                Rectangle {
+                                                    background: row.is_header ? Theme.table_header_bg : (mod(row_idx, 2) == 1 ? Theme.table_cell_bg : Theme.table_alt_row_bg);
+
+                                                    HorizontalLayout {
+                                                        spacing: 0px;
+                                                        padding: 0px;
+
+                                                        for cell[col_idx] in row.cells : Rectangle {
+                                                            clip: true;
+                                                            width: !root.word_wrap ? cell.width :
+                                                                   (table_container.actual_table_w < block.table_min_width ?
+                                                                       (cell.min_width * (table_container.actual_table_w / max(1px, block.table_min_width))) :
+                                                                   (table_container.actual_table_w < block.table_mid_width ?
+                                                                       (cell.min_width + (cell.mid_width - cell.min_width) * ((table_container.actual_table_w - block.table_min_width) / max(1px, block.table_mid_width - block.table_min_width))) :
+                                                                       (cell.mid_width + (cell.width - cell.mid_width) * min(1.0, (table_container.actual_table_w - block.table_mid_width) / max(1px, block.table_natural_width - block.table_mid_width)))));
+
+                                                            HorizontalLayout {
+                                                                padding-left: 12px;
+                                                                padding-right: 12px;
+                                                                padding-top: 8px;
+                                                                padding-bottom: 8px;
+
+                                                                StyledText {
+                                                                    horizontal-stretch: 1;
+                                                                    text: cell.text;
+                                                                    default-font-size: 13px;
+                                                                    default-color: row.is_header ? Theme.table_header_text : Theme.table_cell_text;
+                                                                    horizontal-alignment: cell.align == 1 ? TextHorizontalAlignment.center : (cell.align == 2 ? TextHorizontalAlignment.right : TextHorizontalAlignment.left);
+                                                                    link-color: Theme.accent;
+                                                                }
+                                                            }
+
+                                                            if col_idx > 0 : Rectangle {
+                                                                x: 0px;
+                                                                y: 0px;
+                                                                width: 1px;
+                                                                height: 100%;
+                                                                background: Theme.table_border;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        TouchArea {
+                                            mouse-cursor: pointer;
+                                            pointer-event(ev) => {
+                                                if ev.kind == PointerEventKind.down {
+                                                    root.active_preview_block_index = block_idx;
+                                                    root.active_code_block_index = -1;
+                                                    preview_focus.focus();
+                                                    if ev.button == PointerEventButton.right {
+                                                        preview_context.show({
+                                                            x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                            y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                            clicked => {
+                                                root.active_preview_block_index = block_idx;
+                                                root.active_code_block_index = -1;
+                                                preview_focus.focus();
+                                                root.copy_preview_block(block.content, block_idx);
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Footnotes ([^1]: text)
+                                if block.block_type == "footnote" : HorizontalLayout {
+                                    alignment: start;
+                                    Rectangle {
+                                        width: root.word_wrap ? (preview_scroll.visible-width - 32px) : max(preview_scroll.visible-width - 32px, footnote_inner.preferred-width);
+                                        preferred-width: root.word_wrap ? (preview_scroll.visible-width - 32px) : footnote_inner.preferred-width;
+                                        background: root.copied_preview_block_index == block_idx ? (Theme.is_dark ? #27ae6020 : #27ae6015) :
+                                                    (root.active_preview_block_index == block_idx ? (Theme.is_dark ? #3daee918 : #3daee912) : Theme.footnote_bg);
+                                        border-radius: 4px;
+                                        border-width: 1px;
+                                        border-color: root.copied_preview_block_index == block_idx ? Theme.success :
+                                                      (root.active_preview_block_index == block_idx ? Theme.accent : Theme.border);
+
+                                        footnote_inner := HorizontalLayout {
+                                            padding: 8px;
+                                            spacing: 8px;
+
+                                            TouchArea {
+                                                width: fn_badge.preferred-width;
+                                                mouse-cursor: pointer;
+                                                pointer-event(ev) => {
+                                                    if ev.kind == PointerEventKind.down {
+                                                        root.active_preview_block_index = block_idx;
+                                                        root.active_code_block_index = -1;
+                                                        preview_focus.focus();
+                                                        if ev.button == PointerEventButton.right {
+                                                            preview_context.show({
+                                                                x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                                y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                            });
+                                                        }
+                                                    }
+                                                }
+                                                clicked => {
+                                                    root.active_preview_block_index = block_idx;
+                                                    root.active_code_block_index = -1;
+                                                    preview_focus.focus();
+                                                    root.handle_preview_link("#fnref-" + (block.footnote_label != "" ? block.footnote_label : block.extra));
+                                                }
+                                                fn_badge := Text {
+                                                    text: "[" + block.extra + "]:";
+                                                    font-size: 12px;
+                                                    font-weight: 700;
+                                                    color: Theme.accent;
+                                                    vertical-alignment: top;
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                horizontal-stretch: 1;
+
+                                                StyledText {
+                                                    width: 100%;
+                                                    height: 100%;
+                                                    text: block.styled_content;
+                                                    default-font-size: 13px;
+                                                    default-color: Theme.text_secondary;
+                                                    link-color: Theme.accent;
+                                                }
+
+                                                TouchArea {
+                                                    mouse-cursor: pointer;
+                                                    pointer-event(ev) => {
+                                                        if ev.kind == PointerEventKind.down {
+                                                            root.active_preview_block_index = block_idx;
+                                                            root.active_code_block_index = -1;
+                                                            preview_focus.focus();
+                                                            if ev.button == PointerEventButton.right {
+                                                                preview_context.show({
+                                                                    x: self.absolute-position.x + self.mouse-x - preview_context.absolute-position.x,
+                                                                    y: self.absolute-position.y + self.mouse-y - preview_context.absolute-position.y,
+                                                                });
+                                                            }
+                                                        }
+                                                    }
+                                                    clicked => {
+                                                        root.active_preview_block_index = block_idx;
+                                                        root.active_code_block_index = -1;
+                                                        preview_focus.focus();
+                                                        root.copy_preview_block(block.content, block_idx);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Floating Preview Actions Pill (Fixed in Top-Right Corner)
+            pill := Rectangle {
+                width: pill_layout.preferred-width;
+                height: 26px;
+                x: parent.width - self.width - 16px;
+                y: 8px;
+                background: Theme.panel_bg;
+                border-radius: 5px;
+                border-width: 1px;
+                border-color: Theme.border;
+                drop-shadow-blur: 6px;
+                drop-shadow-color: #00000028;
+
+                pill_layout := HorizontalLayout {
+                    padding-left: 3px;
+                    padding-right: 3px;
+                    padding-top: 2px;
+                    padding-bottom: 2px;
+                    spacing: 2px;
+                    alignment: center;
+
+                    // Copy HTML button
+                    Rectangle {
+                        height: 22px;
+                        border-radius: 3px;
+                        background: btn_copy_html_touch.has-hover ? Theme.btn_hover : transparent;
+
+                        HorizontalLayout {
+                            padding-left: 6px;
+                            padding-right: 6px;
+                            spacing: 4px;
+                            alignment: center;
+
+                            Text {
+                                text: root.preview_copy_feedback == 1 ? "\u{f00c}" : "\u{f0c5}";
+                                font-family: "Symbols Nerd Font";
+                                font-size: 11px;
+                                color: root.preview_copy_feedback == 1 ? Theme.success : Theme.text_secondary;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: root.preview_copy_feedback == 1 ? @tr("Copied") : @tr("HTML");
+                                font-size: 11px;
+                                font-weight: 500;
+                                color: root.preview_copy_feedback == 1 ? Theme.success : Theme.text_secondary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        btn_copy_html_touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.copy_preview_html_clicked(); }
+                        }
+                    }
+
+                    // Divider
+                    VerticalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 1px;
+                            height: 14px;
+                            background: Theme.divider;
+                        }
+                    }
+
+                    // Copy Plain Text button
+                    Rectangle {
+                        height: 22px;
+                        border-radius: 3px;
+                        background: btn_copy_text_touch.has-hover ? Theme.btn_hover : transparent;
+
+                        HorizontalLayout {
+                            padding-left: 6px;
+                            padding-right: 6px;
+                            spacing: 4px;
+                            alignment: center;
+
+                            Text {
+                                text: root.preview_copy_feedback == 2 ? "\u{f00c}" : "\u{f036}";
+                                font-family: "Symbols Nerd Font";
+                                font-size: 11px;
+                                color: root.preview_copy_feedback == 2 ? Theme.success : Theme.text_secondary;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: root.preview_copy_feedback == 2 ? @tr("Copied") : @tr("Text");
+                                font-size: 11px;
+                                font-weight: 500;
+                                color: root.preview_copy_feedback == 2 ? Theme.success : Theme.text_secondary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        btn_copy_text_touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.copy_preview_text_clicked(); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+        // Bottom Border Divider
+        if root.show_status_bar : Rectangle {
+            height: 1px;
+            background: Theme.divider;
+        }
+
+        // --- Bottom Panel (Active Controls & Status) ---
+        if root.show_status_bar : Rectangle {
+            height: 32px;
+            background: Theme.panel_bg;
+
+            HorizontalLayout {
+                padding-left: 8px;
+                padding-right: 8px;
+                spacing: 8px;
+
+                // --- Files Sidebar Controls ---
+                VerticalLayout {
+                    alignment: center;
+                    HorizontalLayout {
+                        spacing: 4px;
+
+                        // Sidebar toggle button
+                        Rectangle {
+                            width: 26px;
+                            height: 24px;
+                            border-radius: 4px;
+                            background: root.show_files_sidebar ? (sb_toggle_touch.has-hover ? Theme.btn_hover : Theme.accent_bg) : (sb_toggle_touch.has-hover ? Theme.btn_hover : transparent);
+                            border-width: 1px;
+                            border-color: root.show_files_sidebar ? Theme.item_active_border : Theme.border;
+
+                            Text {
+                                text: "\u{f07c}";
+                                font-family: "Symbols Nerd Font";
+                                font-size: 13px;
+                                color: root.show_files_sidebar ? Theme.accent_text : Theme.text_secondary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            sb_toggle_touch := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.show_files_sidebar = !root.show_files_sidebar;
+                                }
+                            }
+                        }
+
+                        // Refresh files tree button
+                        Rectangle {
+                            width: 26px;
+                            height: 24px;
+                            border-radius: 4px;
+                            background: ref_btn_touch.has-hover ? Theme.btn_hover : transparent;
+                            border-width: 1px;
+                            border-color: ref_btn_touch.has-hover ? Theme.border : transparent;
+
+                            Text {
+                                text: "\u{f46a}";
+                                font-family: "Symbols Nerd Font";
+                                font-size: 13px;
+                                color: Theme.text_secondary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            ref_btn_touch := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.refresh_files_clicked();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Vertical divider to the bottom
+                Rectangle {
+                    width: 1px;
+                    background: Theme.divider;
+                }
+
+                // --- Document Stats ---
+                VerticalLayout {
+                    alignment: center;
+                    HorizontalLayout {
+                        spacing: 8px;
+
+                        Text {
+                            text: @tr("Lines: {0}", root.line_count);
+                            font-size: 11px;
+                            color: Theme.text_secondary;
+                            vertical-alignment: center;
+                        }
+
+                        Text {
+                            text: @tr("Words: {0}", root.word_count);
+                            font-size: 11px;
+                            color: Theme.text_secondary;
+                            vertical-alignment: center;
+                        }
+
+                        Text {
+                            text: @tr("Characters: {0}", root.char_count);
+                            font-size: 11px;
+                            color: Theme.text_secondary;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                // Spacer pushing controls to right
+                Rectangle { horizontal-stretch: 1; }
+
+                // --- View Switcher (Editor & Preview Controls) ---
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        background: Theme.btn_bg;
+                        border-radius: 5px;
+                        height: 24px;
+
+                        HorizontalLayout {
+                            padding: 2px;
+                            spacing: 2px;
+                            alignment: center;
+
+                            // Split view button
+                            Rectangle {
+                                border-radius: 3px;
+                                background: root.view_mode == 0 ? Theme.btn_active_bg : (btn_split_touch.has-hover ? Theme.btn_hover : transparent);
+                                border-width: root.view_mode == 0 ? 1px : 0px;
+                                border-color: Theme.btn_active_border;
+
+                                HorizontalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 6px;
+                                    spacing: 4px;
+                                    alignment: center;
+
+                                    Text {
+                                        text: "\u{f0db}";
+                                        font-family: "Symbols Nerd Font";
+                                        font-size: 11px;
+                                        color: root.view_mode == 0 ? Theme.btn_active_text : Theme.text_secondary;
+                                        vertical-alignment: center;
+                                    }
+
+                                    Text {
+                                        text: @tr("Split");
+                                        font-size: 11px;
+                                        font-weight: root.view_mode == 0 ? 700 : 500;
+                                        color: root.view_mode == 0 ? Theme.btn_active_text : Theme.text_secondary;
+                                        vertical-alignment: center;
+                                    }
+                                }
+
+                                btn_split_touch := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => { root.set_view_mode(0); }
+                                }
+                            }
+
+                            // Editor-only button
+                            Rectangle {
+                                border-radius: 3px;
+                                background: root.view_mode == 1 ? Theme.btn_active_bg : (btn_edit_touch.has-hover ? Theme.btn_hover : transparent);
+                                border-width: root.view_mode == 1 ? 1px : 0px;
+                                border-color: Theme.btn_active_border;
+
+                                HorizontalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 6px;
+                                    spacing: 4px;
+                                    alignment: center;
+
+                                    Text {
+                                        text: "\u{f040}";
+                                        font-family: "Symbols Nerd Font";
+                                        font-size: 11px;
+                                        color: root.view_mode == 1 ? Theme.btn_active_text : Theme.text_secondary;
+                                        vertical-alignment: center;
+                                    }
+
+                                    Text {
+                                        text: @tr("Editor");
+                                        font-size: 11px;
+                                        font-weight: root.view_mode == 1 ? 700 : 500;
+                                        color: root.view_mode == 1 ? Theme.btn_active_text : Theme.text_secondary;
+                                        vertical-alignment: center;
+                                    }
+                                }
+
+                                btn_edit_touch := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => { root.set_view_mode(1); }
+                                }
+                            }
+
+                            // Preview-only button
+                            Rectangle {
+                                border-radius: 3px;
+                                background: root.view_mode == 2 ? Theme.btn_active_bg : (btn_prev_touch.has-hover ? Theme.btn_hover : transparent);
+                                border-width: root.view_mode == 2 ? 1px : 0px;
+                                border-color: Theme.btn_active_border;
+
+                                HorizontalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 6px;
+                                    spacing: 4px;
+                                    alignment: center;
+
+                                    Text {
+                                        text: "\u{f06e}";
+                                        font-family: "Symbols Nerd Font";
+                                        font-size: 11px;
+                                        color: root.view_mode == 2 ? Theme.btn_active_text : Theme.text_secondary;
+                                        vertical-alignment: center;
+                                    }
+
+                                    Text {
+                                        text: @tr("Preview");
+                                        font-size: 11px;
+                                        font-weight: root.view_mode == 2 ? 700 : 500;
+                                        color: root.view_mode == 2 ? Theme.btn_active_text : Theme.text_secondary;
+                                        vertical-alignment: center;
+                                    }
+                                }
+
+                                btn_prev_touch := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => { root.set_view_mode(2); }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Vertical divider to the bottom
+                Rectangle {
+                    width: 1px;
+                    background: Theme.divider;
+                }
+
+                // --- Theme switcher button ---
+                VerticalLayout {
+                    alignment: center;
+                    Rectangle {
+                        height: 24px;
+                        border-radius: 4px;
+                        background: theme_btn_touch.has-hover ? Theme.btn_hover : transparent;
+                        border-width: 1px;
+                        border-color: theme_btn_touch.has-hover ? Theme.border : transparent;
+
+                        HorizontalLayout {
+                            padding-left: 6px;
+                            padding-right: 6px;
+                            spacing: 4px;
+                            alignment: center;
+
+                            Text {
+                                text: root.theme_mode == 0 ? "\u{f042}" : (root.is_dark ? "\u{f186}" : "\u{f185}");
+                                font-family: "Symbols Nerd Font";
+                                font-size: 12px;
+                                color: Theme.text_secondary;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: root.theme_mode == 0 ? @tr("Auto") : (root.is_dark ? @tr("Dark") : @tr("Light"));
+                                font-size: 11px;
+                                font-weight: 500;
+                                color: Theme.text_secondary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        theme_btn_touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                if root.theme_mode == 0 {
+                                    root.set_theme_mode(1);
+                                    root.theme_changed(1);
+                                } else if root.theme_mode == 1 {
+                                    root.set_theme_mode(2);
+                                    root.theme_changed(2);
+                                } else {
+                                    root.set_theme_mode(0);
+                                    root.theme_changed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Modal Overlay: Unsaved Changes Dialog
+    if root.show_unsaved_dialog : Rectangle {
+        x: 0px;
+        y: 0px;
+        width: 100%;
+        height: 100%;
+        background: #00000066;
+
+        TouchArea {
+            // Block clicks behind dialog
+        }
+
+        unsaved_dialog_focus := FocusScope {
+            width: 100%;
+            height: 100%;
+
+            init => {
+                self.focus();
+            }
+
+            key-pressed(event) => {
+                if event.text == Key.Tab || event.text == "\u{0009}" {
+                    if !event.modifiers.shift {
+                        root.unsaved_dialog_focus_index = mod(root.unsaved_dialog_focus_index + 1, 3);
+                    } else {
+                        root.unsaved_dialog_focus_index = mod(root.unsaved_dialog_focus_index + 2, 3);
+                    }
+                    return accept;
+                }
+                if event.text == Key.Backtab {
+                    root.unsaved_dialog_focus_index = mod(root.unsaved_dialog_focus_index + 2, 3);
+                    return accept;
+                }
+                if event.text == Key.RightArrow {
+                    root.unsaved_dialog_focus_index = mod(root.unsaved_dialog_focus_index + 1, 3);
+                    return accept;
+                }
+                if event.text == Key.LeftArrow {
+                    root.unsaved_dialog_focus_index = mod(root.unsaved_dialog_focus_index + 2, 3);
+                    return accept;
+                }
+                if event.text == Key.Return || event.text == Key.Space {
+                    if root.unsaved_dialog_focus_index == 0 {
+                        root.unsaved_dialog_discard();
+                    } else if root.unsaved_dialog_focus_index == 1 {
+                        root.unsaved_dialog_cancel();
+                    } else {
+                        root.unsaved_dialog_save();
+                    }
+                    return accept;
+                }
+                if event.text == Key.Escape {
+                    root.unsaved_dialog_cancel();
+                    return accept;
+                }
+                accept
+            }
+
+            Rectangle {
+                width: 440px;
+                height: dialog_layout.preferred-height;
+                background: Theme.panel_bg;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: Theme.border;
+                drop-shadow-blur: 24px;
+                drop-shadow-color: #00000060;
+
+                dialog_layout := VerticalLayout {
+                    padding: 20px;
+                    spacing: 18px;
+
+                    HorizontalLayout {
+                        spacing: 14px;
+                        alignment: start;
+
+                        Rectangle {
+                            width: 36px;
+                            height: 36px;
+                            border-radius: 18px;
+                            background: Theme.warning_bg;
+                            border-width: 1px;
+                            border-color: Theme.warning_border;
+
+                            Text {
+                                text: "\u{f071}";
+                                font-family: "Symbols Nerd Font";
+                                font-size: 16px;
+                                color: Theme.warning_text;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        VerticalLayout {
+                            spacing: 4px;
+                            alignment: center;
+
+                            Text {
+                                text: @tr("Unsaved Changes");
+                                font-size: 15px;
+                                font-weight: 700;
+                                color: Theme.heading;
+                            }
+
+                            Text {
+                                text: @tr("Do you want to save changes to \"{0}\"?", root.current_file_name != "" ? root.current_file_name : @tr("Untitled"));
+                                font-size: 13px;
+                                color: Theme.text_primary;
+                                wrap: TextWrap.word-wrap;
+                            }
+
+                            Text {
+                                text: @tr("Your changes will be lost if you don't save them.");
+                                font-size: 12px;
+                                color: Theme.text_muted;
+                                wrap: TextWrap.word-wrap;
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 8px;
+                        alignment: end;
+
+                        // Don't Save button
+                        Rectangle {
+                            property <bool> is_btn_focused: unsaved_dialog_focus.has-focus && root.unsaved_dialog_focus_index == 0;
+                            height: 30px;
+                            border-radius: 4px;
+                            background: btn_discard_touch.has-hover ? Theme.btn_hover : Theme.btn_bg;
+                            border-width: self.is_btn_focused ? 2px : 1px;
+                            border-color: self.is_btn_focused ? Theme.error : (btn_discard_touch.has-hover ? Theme.border : transparent);
+
+                            HorizontalLayout {
+                                padding-left: 12px;
+                                padding-right: 12px;
+                                alignment: center;
+
+                                Text {
+                                    text: @tr("Don't Save");
+                                    font-size: 13px;
+                                    font-weight: 500;
+                                    color: Theme.error;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            btn_discard_touch := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.unsaved_dialog_discard();
+                                }
+                            }
+                        }
+
+                        // Cancel button
+                        Rectangle {
+                            property <bool> is_btn_focused: unsaved_dialog_focus.has-focus && root.unsaved_dialog_focus_index == 1;
+                            height: 30px;
+                            border-radius: 4px;
+                            background: btn_cancel_touch.has-hover ? Theme.btn_hover : Theme.btn_bg;
+                            border-width: self.is_btn_focused ? 2px : 1px;
+                            border-color: self.is_btn_focused ? Theme.accent : Theme.border;
+
+                            HorizontalLayout {
+                                padding-left: 12px;
+                                padding-right: 12px;
+                                alignment: center;
+
+                                Text {
+                                    text: @tr("Cancel");
+                                    font-size: 13px;
+                                    font-weight: 500;
+                                    color: Theme.text_primary;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            btn_cancel_touch := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.unsaved_dialog_cancel();
+                                }
+                            }
+                        }
+
+                        // Save button
+                        Rectangle {
+                            property <bool> is_btn_focused: unsaved_dialog_focus.has-focus && root.unsaved_dialog_focus_index == 2;
+                            height: 30px;
+                            border-radius: 4px;
+                            background: btn_save_touch.has-hover ? Theme.accent_hover : Theme.accent;
+                            border-width: self.is_btn_focused ? 2px : 1px;
+                            border-color: self.is_btn_focused ? #ffffff : transparent;
+
+                            HorizontalLayout {
+                                padding-left: 14px;
+                                padding-right: 14px;
+                                alignment: center;
+
+                                Text {
+                                    text: @tr("Save");
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: #ffffff;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            btn_save_touch := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => {
+                                    root.unsaved_dialog_save();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Modal Overlay: Insert Table Dialog
+    if root.show_table_dialog : Rectangle {
+        x: 0px;
+        y: 0px;
+        width: 100%;
+        height: 100%;
+        background: #00000066;
+
+        TouchArea {
+            // Dismiss dialog when clicking on dim backdrop outside the dialog card
+            clicked => {
+                root.show_table_dialog = false;
+                root.focus_editor();
+            }
+        }
+
+        table_dialog_focus := FocusScope {
+            width: 100%;
+            height: 100%;
+
+            init => {
+                self.focus();
+            }
+
+            key-pressed(event) => {
+                if event.text == Key.Tab || event.text == "\u{0009}" {
+                    root.table_dialog_focus_index = 1 - root.table_dialog_focus_index;
+                    return accept;
+                }
+                if event.text == Key.Backtab {
+                    root.table_dialog_focus_index = 1 - root.table_dialog_focus_index;
+                    return accept;
+                }
+                if event.text == Key.LeftArrow {
+                    if root.table_dialog_cols > 1 { root.table_dialog_cols -= 1; }
+                    return accept;
+                }
+                if event.text == Key.RightArrow {
+                    if root.table_dialog_cols < 20 { root.table_dialog_cols += 1; }
+                    return accept;
+                }
+                if event.text == Key.UpArrow {
+                    if root.table_dialog_rows > 1 { root.table_dialog_rows -= 1; }
+                    return accept;
+                }
+                if event.text == Key.DownArrow {
+                    if root.table_dialog_rows < 50 { root.table_dialog_rows += 1; }
+                    return accept;
+                }
+                if event.text == Key.Return || event.text == Key.Space {
+                    if root.table_dialog_focus_index == 0 {
+                        root.show_table_dialog = false;
+                        root.focus_editor();
+                    } else {
+                        root.show_table_dialog = false;
+                        root.insert_custom_table(root.table_dialog_cols, root.table_dialog_rows);
+                        root.focus_editor();
+                    }
+                    return accept;
+                }
+                if event.text == Key.Escape {
+                    root.show_table_dialog = false;
+                    root.focus_editor();
+                    return accept;
+                }
+                accept
+            }
+
+            Rectangle {
+                width: 440px;
+                height: table_dialog_layout.preferred-height;
+                background: Theme.panel_bg;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: Theme.border;
+            drop-shadow-blur: 24px;
+            drop-shadow-color: #00000060;
+
+            TouchArea {
+                // Prevent click on dialog card from triggering background dismiss
+            }
+
+            table_dialog_layout := VerticalLayout {
+                padding: 20px;
+                spacing: 16px;
+
+                // Header with Table Icon
+                HorizontalLayout {
+                    spacing: 14px;
+                    alignment: start;
+
+                    Rectangle {
+                        width: 38px;
+                        height: 38px;
+                        border-radius: 8px;
+                        background: Theme.accent_bg;
+                        border-width: 1px;
+                        border-color: Theme.item_active_border;
+
+                        Text {
+                            text: "\u{f0ce}";
+                            font-family: "Symbols Nerd Font";
+                            font-size: 18px;
+                            color: Theme.accent_text;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    VerticalLayout {
+                        spacing: 3px;
+                        alignment: center;
+
+                        Text {
+                            text: @tr("Insert Table");
+                            font-size: 15px;
+                            font-weight: 700;
+                            color: Theme.heading;
+                        }
+
+                        Text {
+                            text: @tr("Specify the number of columns and rows");
+                            font-size: 12px;
+                            color: Theme.text_secondary;
+                        }
+                    }
+                }
+
+                // Divider
+                Rectangle {
+                    height: 1px;
+                    background: Theme.divider;
+                }
+
+                // Dimension controls (Columns and Rows spinboxes)
+                VerticalLayout {
+                    spacing: 12px;
+
+                    // Columns row
+                    HorizontalLayout {
+                        alignment: space-between;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+
+                            Text {
+                                text: "\u{f0db}";
+                                font-family: "Symbols Nerd Font";
+                                font-size: 14px;
+                                color: Theme.accent;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: @tr("Columns:");
+                                font-size: 13px;
+                                font-weight: 600;
+                                color: Theme.text_primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 6px;
+                            alignment: end;
+
+                            // Decrement button [-]
+                            Rectangle {
+                                width: 32px;
+                                height: 30px;
+                                border-radius: 4px;
+                                background: btn_col_dec.has-hover ? Theme.btn_hover : Theme.btn_bg;
+                                border-width: 1px;
+                                border-color: Theme.border;
+
+                                Text {
+                                    text: "-";
+                                    font-size: 16px;
+                                    font-weight: 700;
+                                    color: root.table_dialog_cols > 1 ? Theme.text_primary : Theme.text_muted;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+
+                                btn_col_dec := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        if root.table_dialog_cols > 1 {
+                                            root.table_dialog_cols -= 1;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Value display box
+                            Rectangle {
+                                width: 54px;
+                                height: 30px;
+                                border-radius: 4px;
+                                background: Theme.view_bg;
+                                border-width: 1px;
+                                border-color: Theme.border;
+
+                                Text {
+                                    text: root.table_dialog_cols;
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: Theme.heading;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            // Increment button [+]
+                            Rectangle {
+                                width: 32px;
+                                height: 30px;
+                                border-radius: 4px;
+                                background: btn_col_inc.has-hover ? Theme.btn_hover : Theme.btn_bg;
+                                border-width: 1px;
+                                border-color: Theme.border;
+
+                                Text {
+                                    text: "+";
+                                    font-size: 16px;
+                                    font-weight: 700;
+                                    color: root.table_dialog_cols < 20 ? Theme.text_primary : Theme.text_muted;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+
+                                btn_col_inc := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        if root.table_dialog_cols < 20 {
+                                            root.table_dialog_cols += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Rows row
+                    HorizontalLayout {
+                        alignment: space-between;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+
+                            Text {
+                                text: "\u{f0c9}";
+                                font-family: "Symbols Nerd Font";
+                                font-size: 14px;
+                                color: Theme.accent;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: @tr("Rows:");
+                                font-size: 13px;
+                                font-weight: 600;
+                                color: Theme.text_primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 6px;
+                            alignment: end;
+
+                            // Decrement button [-]
+                            Rectangle {
+                                width: 32px;
+                                height: 30px;
+                                border-radius: 4px;
+                                background: btn_row_dec.has-hover ? Theme.btn_hover : Theme.btn_bg;
+                                border-width: 1px;
+                                border-color: Theme.border;
+
+                                Text {
+                                    text: "-";
+                                    font-size: 16px;
+                                    font-weight: 700;
+                                    color: root.table_dialog_rows > 1 ? Theme.text_primary : Theme.text_muted;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+
+                                btn_row_dec := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        if root.table_dialog_rows > 1 {
+                                            root.table_dialog_rows -= 1;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Value display box
+                            Rectangle {
+                                width: 54px;
+                                height: 30px;
+                                border-radius: 4px;
+                                background: Theme.view_bg;
+                                border-width: 1px;
+                                border-color: Theme.border;
+
+                                Text {
+                                    text: root.table_dialog_rows;
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    color: Theme.heading;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            // Increment button [+]
+                            Rectangle {
+                                width: 32px;
+                                height: 30px;
+                                border-radius: 4px;
+                                background: btn_row_inc.has-hover ? Theme.btn_hover : Theme.btn_bg;
+                                border-width: 1px;
+                                border-color: Theme.border;
+
+                                Text {
+                                    text: "+";
+                                    font-size: 16px;
+                                    font-weight: 700;
+                                    color: root.table_dialog_rows < 50 ? Theme.text_primary : Theme.text_muted;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+
+                                btn_row_inc := TouchArea {
+                                    mouse-cursor: pointer;
+                                    clicked => {
+                                        if root.table_dialog_rows < 50 {
+                                            root.table_dialog_rows += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Quick Grid Selector
+                VerticalLayout {
+                    spacing: 8px;
+                    alignment: center;
+
+                    HorizontalLayout {
+                        alignment: space-between;
+
+                        Text {
+                            text: @tr("Quick Grid:");
+                            font-size: 11px;
+                            font-weight: 600;
+                            color: Theme.text_muted;
+                        }
+
+                        Text {
+                            text: root.table_dialog_cols + " × " + root.table_dialog_rows;
+                            font-size: 11px;
+                            font-weight: 600;
+                            color: Theme.accent;
+                        }
+                    }
+
+                    Rectangle {
+                        border-radius: 6px;
+                        background: Theme.view_bg;
+                        border-width: 1px;
+                        border-color: Theme.border;
+
+                        VerticalLayout {
+                            padding: 8px;
+                            spacing: 4px;
+                            alignment: center;
+
+                            for row_idx in 5 : HorizontalLayout {
+                                spacing: 4px;
+                                alignment: center;
+
+                                for col_idx in 6 : Rectangle {
+                                    width: 24px;
+                                    height: 20px;
+                                    border-radius: 3px;
+                                    property <bool> is_selected: col_idx < root.table_dialog_cols && row_idx < root.table_dialog_rows;
+                                    background: self.is_selected ? Theme.accent : (grid_cell_touch.has-hover ? Theme.item_hover : Theme.btn_bg);
+                                    border-width: 1px;
+                                    border-color: self.is_selected ? Theme.accent : (grid_cell_touch.has-hover ? Theme.accent : Theme.border);
+
+                                    grid_cell_touch := TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => {
+                                            root.table_dialog_cols = col_idx + 1;
+                                            root.table_dialog_rows = row_idx + 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Presets
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: center;
+
+                    // Preset 2x2
+                    p22_rect := Rectangle {
+                        height: 24px;
+                        border-radius: 4px;
+                        property <bool> is_active: root.table_dialog_cols == 2 && root.table_dialog_rows == 2;
+                        background: self.is_active ? Theme.accent : (p22_touch.has-hover ? Theme.btn_hover : Theme.btn_bg);
+                        border-width: 1px;
+                        border-color: self.is_active ? Theme.accent : Theme.border;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            alignment: center;
+
+                            Text {
+                                text: "2 × 2";
+                                font-size: 11px;
+                                font-weight: 500;
+                                color: p22_rect.is_active ? #ffffff : Theme.text_primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        p22_touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.table_dialog_cols = 2;
+                                root.table_dialog_rows = 2;
+                            }
+                        }
+                    }
+
+                    // Preset 3x3
+                    p33_rect := Rectangle {
+                        height: 24px;
+                        border-radius: 4px;
+                        property <bool> is_active: root.table_dialog_cols == 3 && root.table_dialog_rows == 3;
+                        background: self.is_active ? Theme.accent : (p33_touch.has-hover ? Theme.btn_hover : Theme.btn_bg);
+                        border-width: 1px;
+                        border-color: self.is_active ? Theme.accent : Theme.border;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            alignment: center;
+
+                            Text {
+                                text: "3 × 3";
+                                font-size: 11px;
+                                font-weight: 500;
+                                color: p33_rect.is_active ? #ffffff : Theme.text_primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        p33_touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.table_dialog_cols = 3;
+                                root.table_dialog_rows = 3;
+                            }
+                        }
+                    }
+
+                    // Preset 4x4
+                    p44_rect := Rectangle {
+                        height: 24px;
+                        border-radius: 4px;
+                        property <bool> is_active: root.table_dialog_cols == 4 && root.table_dialog_rows == 4;
+                        background: self.is_active ? Theme.accent : (p44_touch.has-hover ? Theme.btn_hover : Theme.btn_bg);
+                        border-width: 1px;
+                        border-color: self.is_active ? Theme.accent : Theme.border;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            alignment: center;
+
+                            Text {
+                                text: "4 × 4";
+                                font-size: 11px;
+                                font-weight: 500;
+                                color: p44_rect.is_active ? #ffffff : Theme.text_primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        p44_touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.table_dialog_cols = 4;
+                                root.table_dialog_rows = 4;
+                            }
+                        }
+                    }
+
+                    // Preset 5x5
+                    p55_rect := Rectangle {
+                        height: 24px;
+                        border-radius: 4px;
+                        property <bool> is_active: root.table_dialog_cols == 5 && root.table_dialog_rows == 5;
+                        background: self.is_active ? Theme.accent : (p55_touch.has-hover ? Theme.btn_hover : Theme.btn_bg);
+                        border-width: 1px;
+                        border-color: self.is_active ? Theme.accent : Theme.border;
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            alignment: center;
+
+                            Text {
+                                text: "5 × 5";
+                                font-size: 11px;
+                                font-weight: 500;
+                                color: p55_rect.is_active ? #ffffff : Theme.text_primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        p55_touch := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.table_dialog_cols = 5;
+                                root.table_dialog_rows = 5;
+                            }
+                        }
+                    }
+                }
+
+                // Actions: Cancel and Insert
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+
+                    // Cancel button
+                    Rectangle {
+                        property <bool> is_btn_focused: table_dialog_focus.has-focus && root.table_dialog_focus_index == 0;
+                        height: 30px;
+                        border-radius: 4px;
+                        background: btn_tbl_cancel.has-hover ? Theme.btn_hover : Theme.btn_bg;
+                        border-width: self.is_btn_focused ? 2px : 1px;
+                        border-color: self.is_btn_focused ? Theme.accent : Theme.border;
+
+                        HorizontalLayout {
+                            padding-left: 14px;
+                            padding-right: 14px;
+                            alignment: center;
+
+                            Text {
+                                text: @tr("Cancel");
+                                font-size: 13px;
+                                font-weight: 500;
+                                color: Theme.text_primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        btn_tbl_cancel := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.show_table_dialog = false;
+                                root.focus_editor();
+                            }
+                        }
+                    }
+
+                    // Insert Table button
+                    Rectangle {
+                        property <bool> is_btn_focused: table_dialog_focus.has-focus && root.table_dialog_focus_index == 1;
+                        height: 30px;
+                        border-radius: 4px;
+                        background: btn_tbl_insert.has-hover ? Theme.accent_hover : Theme.accent;
+                        border-width: self.is_btn_focused ? 2px : 1px;
+                        border-color: self.is_btn_focused ? #ffffff : transparent;
+
+                        HorizontalLayout {
+                            padding-left: 16px;
+                            padding-right: 16px;
+                            alignment: center;
+
+                            Text {
+                                text: @tr("Insert Table");
+                                font-size: 13px;
+                                font-weight: 700;
+                                color: #ffffff;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        btn_tbl_insert := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => {
+                                root.show_table_dialog = false;
+                                root.insert_custom_table(root.table_dialog_cols, root.table_dialog_rows);
+                                root.focus_editor();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+}

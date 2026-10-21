@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Markdown Editor
+GenericName=Markdown Editor
+GenericName[ru]=Редактор Markdown
+Comment=Distraction-free text editor for Markdown
+Comment[ru]=Редактор Markdown для сосредоточенной работы
+Exec=markdown-editor %F
+TryExec=markdown-editor
+Icon=markdown-editor
+Terminal=false
+Categories=Qt;Office;WordProcessor;
+Keywords=markdown;editor;text;notes;preview;
+MimeType=text/plain;text/markdown;text/x-markdown;
+StartupWMClass=markdown-editor
