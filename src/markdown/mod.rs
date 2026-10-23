@@ -13,9 +13,11 @@ pub mod utils;
 pub use export::{markdown_to_html, markdown_to_plain_text};
 #[allow(unused_imports)]
 pub use layout::{
-    calculate_footnote_offsets, compute_table_column_widths, compute_table_layout_metrics,
-    estimate_block_height, estimate_preview_height, measure_cell_min_word_width,
-    TableColumnMetrics, TableLayoutMetrics,
+    calculate_footnote_offsets, calculate_footnote_offsets_for_width,
+    compute_table_column_widths, compute_table_layout_metrics,
+    estimate_block_height, estimate_block_height_for_width,
+    estimate_preview_height, estimate_preview_height_for_width,
+    measure_cell_min_word_width, TableColumnMetrics, TableLayoutMetrics,
 };
 pub use parser::parse_markdown;
 #[allow(unused_imports)]

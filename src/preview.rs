@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
+use crate::app_state::AppState;
 use crate::{file_browser, markdown};
 use crate::{AppWindow, FileTreeItemData, MarkdownBlockData, TableCellData, TableRowData};
 
@@ -209,7 +210,7 @@ pub fn calculate_stats(text: &str) -> (i32, i32, i32) {
 pub fn update_preview(
     ui: &AppWindow,
     text: &str,
-    footnote_nav: &mut FootnoteNavigationState,
+    state: &mut AppState,
 ) {
     let blocks = markdown::parse_markdown(text);
     let h_wrap = markdown::estimate_preview_height(&blocks, true);
@@ -217,10 +218,13 @@ pub fn update_preview(
     ui.set_estimated_preview_height(h_wrap);
     ui.set_estimated_preview_height_no_wrap(h_no_wrap);
 
-    footnote_nav.update(&blocks);
+    state.footnote_nav.update(&blocks);
+    state.preview_blocks = blocks.clone();
 
     let model = convert_blocks_to_slint(blocks);
     ui.set_preview_blocks(model);
+
+    ui.set_preview_version(ui.get_preview_version() + 1);
 
     let (lines, words, chars) = calculate_stats(text);
     ui.set_line_count(lines);

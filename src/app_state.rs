@@ -19,6 +19,19 @@ pub struct AppState {
     pub current_dir: PathBuf,
     pub expanded_dirs: HashSet<PathBuf>,
     pub footnote_nav: FootnoteNavigationState,
+    pub preview_blocks: Vec<markdown::MarkdownBlock>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            current_file: None,
+            current_dir: PathBuf::from("."),
+            expanded_dirs: HashSet::new(),
+            footnote_nav: FootnoteNavigationState::default(),
+            preview_blocks: Vec::new(),
+        }
+    }
 }
 
 /// Actions requested by the user that may be deferred if there are unsaved changes.
@@ -41,7 +54,7 @@ pub fn load_file(ui: &AppWindow, path: &Path, state: &Rc<RefCell<AppState>>, is_
         {
             let mut st = state.borrow_mut();
             st.footnote_nav.clear_recorded();
-            update_preview(ui, &clean_content, &mut st.footnote_nav);
+            update_preview(ui, &clean_content, &mut st);
         }
 
         let file_name = path
@@ -123,7 +136,7 @@ pub fn execute_pending_action(
             let (dir, expanded) = {
                 let mut st = state.borrow_mut();
                 st.footnote_nav.clear_recorded();
-                update_preview(ui, "", &mut st.footnote_nav);
+                update_preview(ui, "", &mut st);
                 st.current_file = None;
                 (st.current_dir.clone(), st.expanded_dirs.clone())
             };
@@ -152,7 +165,7 @@ pub fn execute_pending_action(
             let (dir, expanded) = {
                 let mut st = state.borrow_mut();
                 st.footnote_nav.clear_recorded();
-                update_preview(ui, sample, &mut st.footnote_nav);
+                update_preview(ui, sample, &mut st);
                 st.current_file = None;
                 (st.current_dir.clone(), st.expanded_dirs.clone())
             };
@@ -173,7 +186,7 @@ pub fn execute_pending_action(
             let (dir, expanded) = {
                 let mut st = state.borrow_mut();
                 st.footnote_nav.clear_recorded();
-                update_preview(ui, sample, &mut st.footnote_nav);
+                update_preview(ui, sample, &mut st);
                 st.current_file = None;
                 (st.current_dir.clone(), st.expanded_dirs.clone())
             };

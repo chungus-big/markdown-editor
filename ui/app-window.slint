@@ -597,6 +597,7 @@ export component AppWindow inherits Window {
     in-out property <bool> show_status_bar: true;
     in property <length> estimated_preview_height: 0px;
     in property <length> estimated_preview_height_no_wrap: 0px;
+    in-out property <int> preview_version: 0;
 
     // Footnote navigation
     in-out property <length> footnote_return_y: 0px;
@@ -641,6 +642,7 @@ export component AppWindow inherits Window {
     callback open_external_url(string);
     callback save_footnote_pos(string, length);
     callback get_footnote_pos(string) -> ScrollTarget;
+    pure callback compute_preview_height(length, int) -> length;
     callback shortcut_requested(string, bool, bool, bool, bool) -> bool;
 
     public function handle_preview_link(url: string) {
@@ -1336,7 +1338,17 @@ export component AppWindow inherits Window {
                         // Preview Content
                         preview_scroll := ScrollView {
                         content-width: root.word_wrap ? self.visible-width : max(self.visible-width, preview_layout.preferred-width);
-                        content-height: max(self.visible-height, max(preview_layout.preferred-height, root.word_wrap ? root.estimated_preview_height : root.estimated_preview_height_no_wrap));
+                        content-height: max(
+                            self.visible-height,
+                            max(
+                                preview_layout.preferred-height,
+                                root.word_wrap ?
+                                    (root.compute_preview_height(self.visible-width, root.preview_version) > 0px ?
+                                        root.compute_preview_height(self.visible-width, root.preview_version) :
+                                        root.estimated_preview_height) :
+                                    root.estimated_preview_height_no_wrap
+                            )
+                        );
 
                         preview_layout := VerticalLayout {
                             width: root.word_wrap ? preview_scroll.visible-width : max(preview_scroll.visible-width, preview_layout.preferred-width);

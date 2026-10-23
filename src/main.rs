@@ -54,8 +54,18 @@ fn main() -> Result<(), Box<dyn Error>> {
         current_dir: initial_dir.clone(),
         expanded_dirs: HashSet::new(),
         footnote_nav: preview::FootnoteNavigationState::default(),
+        preview_blocks: Vec::new(),
     }));
     let pending_action = Rc::new(RefCell::new(PendingAction::None));
+
+    let state_height = Rc::clone(&state);
+    ui.on_compute_preview_height(move |width, _version| {
+        if let Ok(st) = state_height.try_borrow() {
+            markdown::layout::estimate_preview_height_for_width(&st.preview_blocks, true, width)
+        } else {
+            0.0
+        }
+    });
 
     // Handle window close request ('X' button in titlebar)
     let ui_weak = ui.as_weak();
@@ -91,7 +101,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             } else {
                 let sample = get_sample_markdown(is_ru_initial);
                 ui.set_markdown_text(sample.into());
-                update_preview(&ui, sample, &mut state.borrow_mut().footnote_nav);
+                update_preview(&ui, sample, &mut state.borrow_mut());
                 ui.set_current_file_name(if is_ru_initial { "Пример GFM".into() } else { "GFM Sample".into() });
                 let st = state.borrow();
                 update_file_tree(&ui, &p, None, &st.expanded_dirs);
@@ -100,7 +110,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             // Specified path not found, open sample in default dir
             let sample = get_sample_markdown(is_ru_initial);
             ui.set_markdown_text(sample.into());
-            update_preview(&ui, sample, &mut state.borrow_mut().footnote_nav);
+            update_preview(&ui, sample, &mut state.borrow_mut());
             ui.set_current_file_name(if is_ru_initial { "Пример GFM".into() } else { "GFM Sample".into() });
             let st = state.borrow();
             update_file_tree(&ui, &initial_dir, None, &st.expanded_dirs);
@@ -117,7 +127,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         } else {
             let sample = get_sample_markdown(is_ru_initial);
             ui.set_markdown_text(sample.into());
-            update_preview(&ui, sample, &mut state.borrow_mut().footnote_nav);
+            update_preview(&ui, sample, &mut state.borrow_mut());
             ui.set_current_file_name(if is_ru_initial { "Пример GFM".into() } else { "GFM Sample".into() });
             let st = state.borrow();
             update_file_tree(&ui, &initial_dir, None, &st.expanded_dirs);
@@ -148,11 +158,11 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let clean = markdown::expand_tabs(&new_text, 4);
                 ui.set_markdown_text(clean.as_str().into());
                 ui.set_is_modified(true);
-                update_preview(&ui, &clean, &mut state_text.borrow_mut().footnote_nav);
+                update_preview(&ui, &clean, &mut state_text.borrow_mut());
                 return;
             }
             ui.set_is_modified(true);
-            update_preview(&ui, &new_text, &mut state_text.borrow_mut().footnote_nav);
+            update_preview(&ui, &new_text, &mut state_text.borrow_mut());
         }
     });
 
@@ -254,7 +264,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             {
                 let mut st = state_clear.borrow_mut();
                 st.footnote_nav.clear_recorded();
-                update_preview(&ui, "", &mut st.footnote_nav);
+                update_preview(&ui, "", &mut st);
             }
             ui.set_is_modified(true);
             ui.invoke_focus_editor();

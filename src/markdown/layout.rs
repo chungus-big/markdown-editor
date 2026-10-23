@@ -3,7 +3,16 @@
 use super::types::{BlockType, MarkdownBlock};
 
 /// Estimates the rendered height of a single markdown block in logical pixels.
+#[allow(dead_code)]
 pub fn estimate_block_height(b: &MarkdownBlock, word_wrap: bool) -> f32 {
+    estimate_block_height_for_width(b, word_wrap, 700.0)
+}
+
+/// Estimates the rendered height of a single markdown block in logical pixels given the available preview pane width.
+pub fn estimate_block_height_for_width(b: &MarkdownBlock, word_wrap: bool, preview_width: f32) -> f32 {
+    let preview_w = if preview_width < 50.0 { 700.0 } else { preview_width };
+    let block_avail_w = (preview_w - 32.0).max(50.0);
+
     match b.typed() {
         Some(BlockType::Heading) => {
             let pad = match b.level {
@@ -19,12 +28,8 @@ pub fn estimate_block_height(b: &MarkdownBlock, word_wrap: bool) -> f32 {
             };
             let line_h = font_size * 1.35;
             let char_count = b.content.chars().count() as f32;
-            let cpl = match b.level {
-                1 => 36.0,
-                2 => 44.0,
-                3 => 52.0,
-                _ => 60.0,
-            };
+            let inner_w = (block_avail_w - 12.0).max(30.0);
+            let cpl = (inner_w / (font_size * 0.58)).max(1.0);
             let lines = if word_wrap {
                 (char_count / cpl).ceil().max(1.0)
             } else {
@@ -36,11 +41,13 @@ pub fn estimate_block_height(b: &MarkdownBlock, word_wrap: bool) -> f32 {
             let explicit_lines = b.content.lines().count().max(1) as f32;
             let lang_header = if !b.extra.is_empty() { 20.0 } else { 0.0 };
             let line_h = 19.0;
+            let inner_w = (block_avail_w - 24.0).max(40.0);
+            let cpl = (inner_w / 7.8).max(1.0);
             let lines = if word_wrap {
                 let mut wrapped_lines = 0.0;
                 for line in b.content.lines() {
                     let len = line.chars().count() as f32;
-                    wrapped_lines += (len / 85.0).ceil().max(1.0);
+                    wrapped_lines += (len / cpl).ceil().max(1.0);
                 }
                 wrapped_lines.max(explicit_lines)
             } else {
@@ -49,33 +56,102 @@ pub fn estimate_block_height(b: &MarkdownBlock, word_wrap: bool) -> f32 {
             24.0 + lang_header + lines * line_h + 12.0
         }
         Some(BlockType::Table) => {
-            let row_count = b.rows.len() as f32;
-            row_count * 32.0 + 12.0 + 12.0
+            let metrics = compute_table_layout_metrics(&b.rows);
+            let num_cols = metrics.columns.len();
+            if num_cols == 0 || b.rows.is_empty() {
+                return 24.0;
+            }
+            let actual_table_w = if word_wrap {
+                metrics.table_natural_width.min(block_avail_w.max(100.0))
+            } else {
+                metrics.table_natural_width
+            };
+
+            let col_widths: Vec<f32> = metrics
+                .columns
+                .iter()
+                .map(|col| {
+                    if !word_wrap {
+                        col.natural_width
+                    } else if actual_table_w < metrics.table_min_width {
+                        col.min_width * (actual_table_w / metrics.table_min_width.max(1.0))
+                    } else if actual_table_w < metrics.table_mid_width {
+                        let t = (actual_table_w - metrics.table_min_width)
+                            / (metrics.table_mid_width - metrics.table_min_width).max(1.0);
+                        col.min_width + (col.mid_width - col.min_width) * t
+                    } else {
+                        let t = ((actual_table_w - metrics.table_mid_width)
+                            / (metrics.table_natural_width - metrics.table_mid_width).max(1.0))
+                        .min(1.0);
+                        col.min_width + (col.natural_width - col.mid_width) * t
+                    }
+                })
+                .collect();
+
+            let mut table_h: f32 = 0.0;
+            for (row_idx, row) in b.rows.iter().enumerate() {
+                if row_idx > 0 {
+                    table_h += 1.0;
+                }
+                let mut row_h: f32 = 32.0;
+                for (col_idx, cell) in row.cells.iter().enumerate() {
+                    let col_w = col_widths.get(col_idx).copied().unwrap_or(50.0);
+                    let cell_usable_w = (col_w - 24.0).max(20.0);
+                    let text_w = measure_cell_text_width(cell);
+                    let lines = if word_wrap && text_w > cell_usable_w {
+                        (text_w / cell_usable_w).ceil().max(1.0)
+                    } else {
+                        1.0
+                    };
+                    let cell_h = 16.0 + lines * 18.0;
+                    if cell_h > row_h {
+                        row_h = cell_h;
+                    }
+                }
+                table_h += row_h;
+            }
+            table_h + 12.0
         }
         Some(BlockType::Separator) => 1.0 + 12.0,
         Some(BlockType::Task) => {
+            let pad_left = if b.level > 0 {
+                b.level as f32 * 20.0 + 6.0
+            } else {
+                6.0
+            };
+            let prefix_w = 32.0 + if !b.extra.is_empty() { 32.0 } else { 0.0 };
+            let inner_w = (block_avail_w - pad_left - 6.0 - prefix_w).max(40.0);
+            let cpl = (inner_w / 8.0).max(1.0);
             let char_count = b.content.chars().count() as f32;
             let lines = if word_wrap {
-                (char_count / 85.0).ceil().max(1.0)
+                (char_count / cpl).ceil().max(1.0)
             } else {
                 1.0
             };
             (lines * 19.0).max(24.0) + 12.0
         }
         Some(BlockType::Quote) => {
-            let char_count = b.content.chars().count() as f32;
+            let inner_w = (block_avail_w - 38.0).max(40.0);
+            let cpl = (inner_w / 8.0).max(1.0);
             let explicit_lines = b.content.lines().count().max(1) as f32;
             let lines = if word_wrap {
-                (char_count / 85.0).ceil().max(explicit_lines)
+                let mut total = 0.0;
+                for line in b.content.lines() {
+                    let len = line.chars().count() as f32;
+                    total += (len / cpl).ceil().max(1.0);
+                }
+                total.max(explicit_lines)
             } else {
                 explicit_lines
             };
             12.0 + lines * 19.0 + 12.0
         }
         Some(BlockType::Footnote) => {
+            let inner_w = (block_avail_w - 60.0).max(40.0);
+            let cpl = (inner_w / 8.0).max(1.0);
             let char_count = b.content.chars().count() as f32;
             let lines = if word_wrap {
-                (char_count / 85.0).ceil().max(1.0)
+                (char_count / cpl).ceil().max(1.0)
             } else {
                 1.0
             };
@@ -83,10 +159,21 @@ pub fn estimate_block_height(b: &MarkdownBlock, word_wrap: bool) -> f32 {
         }
         _ => {
             // paragraph
-            let char_count = b.content.chars().count() as f32;
+            let pad_left = if b.level > 0 {
+                b.level as f32 * 20.0 + 6.0
+            } else {
+                6.0
+            };
+            let inner_w = (block_avail_w - pad_left - 6.0).max(40.0);
+            let cpl = (inner_w / 8.0).max(1.0);
             let explicit_lines = b.content.lines().count().max(1) as f32;
             let lines = if word_wrap {
-                (char_count / 85.0).ceil().max(explicit_lines)
+                let mut total = 0.0;
+                for line in b.content.lines() {
+                    let len = line.chars().count() as f32;
+                    total += (len / cpl).ceil().max(1.0);
+                }
+                total.max(explicit_lines)
             } else {
                 explicit_lines
             };
@@ -97,9 +184,21 @@ pub fn estimate_block_height(b: &MarkdownBlock, word_wrap: bool) -> f32 {
 
 /// Estimates the total rendered height of the preview blocks in logical pixels.
 pub fn estimate_preview_height(blocks: &[MarkdownBlock], word_wrap: bool) -> f32 {
+    estimate_preview_height_for_width(blocks, word_wrap, 700.0)
+}
+
+/// Estimates the total rendered height of the preview blocks in logical pixels given the available preview pane width.
+pub fn estimate_preview_height_for_width(blocks: &[MarkdownBlock], word_wrap: bool, width: f32) -> f32 {
+    if blocks.is_empty() {
+        return 0.0;
+    }
+    let eff_width = if width < 50.0 { 700.0 } else { width };
     let mut total: f32 = 12.0 + 48.0; // padding top (12px) + padding bottom (48px)
     for b in blocks {
-        total += estimate_block_height(b, word_wrap);
+        total += estimate_block_height_for_width(b, word_wrap, eff_width);
+    }
+    if word_wrap {
+        total += 24.0; // safety buffer to ensure bottom content is never clipped on narrow wrapping
     }
     total
 }
@@ -110,10 +209,21 @@ pub fn calculate_footnote_offsets(
     blocks: &[MarkdownBlock],
     word_wrap: bool,
 ) -> std::collections::HashMap<String, f32> {
+    calculate_footnote_offsets_for_width(blocks, word_wrap, 700.0)
+}
+
+/// Calculates the estimated vertical Y offset in logical pixels from the top of the preview
+/// for each footnote label referenced in the document given the preview width.
+pub fn calculate_footnote_offsets_for_width(
+    blocks: &[MarkdownBlock],
+    word_wrap: bool,
+    width: f32,
+) -> std::collections::HashMap<String, f32> {
     let mut offsets = std::collections::HashMap::new();
     let mut current_y: f32 = 12.0;
+    let eff_width = if width < 50.0 { 700.0 } else { width };
     for b in blocks {
-        let block_h = estimate_block_height(b, word_wrap);
+        let block_h = estimate_block_height_for_width(b, word_wrap, eff_width);
         let mut search_str = b.content.as_str();
         while let Some(pos) = search_str.find("#fn-") {
             let rest = &search_str[pos + 4..];
@@ -511,5 +621,22 @@ mod tests {
         // Column 0 min_width should be sufficient for "ID"
         assert!(col0.min_width >= 36.0);
         assert!(col0.natural_width >= col0.min_width);
+    }
+
+    #[test]
+    fn test_estimate_preview_height_width_adaptation() {
+        let sample_blocks = parse_markdown(crate::system::SAMPLE_MARKDOWN);
+        let h_wide = estimate_preview_height_for_width(&sample_blocks, true, 800.0);
+        let h_medium = estimate_preview_height_for_width(&sample_blocks, true, 500.0);
+        let h_narrow = estimate_preview_height_for_width(&sample_blocks, true, 250.0);
+
+        // Narrow preview must have significantly taller estimated height due to word wrapping
+        assert!(h_narrow > h_medium, "narrow height ({h_narrow}) must be > medium height ({h_medium})");
+        assert!(h_medium >= h_wide, "medium height ({h_medium}) must be >= wide height ({h_wide})");
+
+        // When word_wrap is false, width should not cause wrapping expansions
+        let h_no_wrap_narrow = estimate_preview_height_for_width(&sample_blocks, false, 250.0);
+        let h_no_wrap_wide = estimate_preview_height_for_width(&sample_blocks, false, 800.0);
+        assert_eq!(h_no_wrap_narrow, h_no_wrap_wide);
     }
 }
